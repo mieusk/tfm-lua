@@ -1,10 +1,9 @@
 ---------------------------------------------------------
--- oii, não sou o chico xavier da programação
--- então é claro q vai estar cheio de gambiarras
--- tem alguma crítica p/ dar?
--- fale à vontade p/ mim, n acho ruim não
+-- e aí, parsa, veio dar uma olhada?
+-- não sou o chico xavier da programação
+-- então é claro q o script vai estar cheio de gambiarras
+-- tem alguma crítica p/ dar? fale à vontade
 -- autoria de preuclides#3383 rs
--- tbm conhecido como bloonshack, avuhcie e primapreta
 -- um modelo de "conspiração" no transformice
 -- ideia de um joguinho de celular semelhante a esse
 -- créditos: {
