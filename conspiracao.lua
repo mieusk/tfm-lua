@@ -28,7 +28,7 @@ local scriptDoGato = coroutine.create(function() --coroutine que será chamada p
     end
 
     if listaDeModos[2].modoAtual then --iniciar - mostra sociedade ou espião
-      carregarTextArea(listaDeModos[2].textAreaDeTempo) --contagem do tempo
+      carregarTextArea(listaDeModos[2].textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
       if listaDeModos[2].primeiraVez then
         degradeParaRemover = gradient(nil, 0.008)
         for i=1, #jogadoresNoJogo do --muda a cor dos espiões para vermelho
@@ -53,12 +53,17 @@ local scriptDoGato = coroutine.create(function() --coroutine que será chamada p
     end
 
     if listaDeModos[3].modoAtual then --exibir - missao atual
-      carregarTextArea(listaDeModos[3].textAreaDeTempo)
+    print(listaDeModos[3].duracaoDoModo)
+      carregarTextArea(listaDeModos[3].textAreaDeTempo, nil, nil, listaDeModos[3].duracaoDoModo)
       if listaDeModos[3].primeiraVez then
-        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288;&#12288;<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
+        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
         carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
       elseif tempoPercorrido == 5 then
-        carregarTextArea(11, nil, '')
+        removerTextArea(11, nil)
+        removerTextArea(12, nil)
+      elseif tempoPercorrido > 5 then
+        print('1 vez')
+        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
       end
     ------------------------------------------------------------------------------------------
     end
@@ -83,8 +88,6 @@ local scriptDoGato = coroutine.create(function() --coroutine que será chamada p
   end
 end)
 
-
-
 --randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
 math.randomseed(math.random(os.time()+math.random()^286637850%64666/math.random()^math.random(os.time(), os.time()+1099511627776)*math.random(32, 64), 60525076796/478324)+1000000000)
 
@@ -95,6 +98,9 @@ do local disable = {'AutoShaman', 'AutoNewGame', 'AutoTimeLeft', 'AfkDeath', 'Au
   end
 end
 
+--lista de administradores
+administradores = {['Preuclides#3383'] = 'Preuclides#3383'}
+
 --tabelas do jogo
 jogadoresNoJogo = {} --{nick, papel}
 local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade
@@ -103,42 +109,50 @@ jogadoresTotais = 0 --total de jogadores nas cadeiras
 --cores usadas no jogo para as textareas
 coresPadrao = {brancoDeTexto = 'FDFDFE',
     brancoMaisEscuro = 'EDEDEE',
+    corDeEspaco = 'BABD2F',
     textAreaFundo = '000001',
     textAreaBorda = '554444',
     espiao = 'FF0C40', --cor vermelho para espião
     sociedade = '10FF54',
     lider = '0950FF',
-    missaoNumero = 'FFBF00'}
+    missaoNumero = 'FFBF00',
+    missaoEspecialTitulo = 'FFAAFF',
+    missaoEspecial = 'ED67EA'}
 
 --tempo total percorrido no modo
 tempoPercorrido = 0
 
-missaoSelecionada = 5 --número do título da missão selecionada
+missaoSelecionada = 2 --número do título da missão selecionada
 missaoAtual = 1 --número da missão atual
 numeroDeAgentesNaMissao = 2
 
 --agentes da missão atual
-local agentesAtuais = {} 
-local agentesForamAprovados = false --se agentes foram aprovados
-local sequenciaDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}} --sequência de número de agente nas missões
+agentesAtuais = {} 
+agentesForamAprovados = false --se agentes foram aprovados
+sequenciaDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}} --sequência de número de agente nas missões
 
 --título das missões
 listaDeMissoes = {
+    --1-3
     {'Achatar a Terra', 'Que a Terra é plana todo o globo sabe. Mas a sociedade viu o capitão do exército americano comentando sobre a contrução de equipamentos de terraformação para curvar a Terra localizados no parque de Tallahassee. Sugeriu-se que '..numeroDeAgentesNaMissao..' agentes da sociedade viajassem para os parques da cidade, onde o congressista Manchuriano e os agentes, acompanhados por quatro carros de palhaços chamando a atenção do público, destruiriam a máquina e achataria a Terra novamente.'}, 
-    {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental transversalmente das micro-ondas. Cada folha tem duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
-    {'Gravar pouso falso na Lua', 'O diretor da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isso. Atenciosamente, diretor da conspiração."'}, 
+    {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental das micro-ondas, a fábrica de chapéus alumínio inspirou-se em folhas de duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
+    {'Gravar pouso falso na Lua', 'A diretora da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isso. Atenciosamente, Diretora Hello Kitty".'}, 
+    --4-6
     {'Visitar família da Elizabeth II', 'Uma carta escrita em nome de Elizabeth II para um de seus favoritos marítimos contava sobre a saudades que sentia de nossa sociedade. A britânica Elizabeth II provou ser uma marca igualmente evocativa de monarca, e não um gosto resistente ao ridículo. À medida que o país se apressava de contar séculos de sagas e dinastias, Elizabeth II, a imortal, retratou os leitores com o registro de suas aventuras no mar. Somente visitá-la mataria essas saudades e nos reaproximaria dela.'}, 
     {'Achar filhos do Conde Drácula', 'O gato sugeriu fincar uma estaca no coração do vampiro para que ele se dissipe e sejamos mais fortes. Ah! Bobeira... Nadaremos em ouro com a aliança dos vampiros. Justiça, Romênia, preferência. Desde quando você quer justiça para os cristãos? Peter (memória falsa) sugeriu que um vampiro de aparência humana se tornasse humano (ah hah, perfeito porque essa pessoa provavelmente ficaria melhor). O gato lamentavelmente esfaqueou o vampiro romeniano e rasgou sua linda lingerie.'}, 
-    {'Começar um desastre "natural"', 'A base de pesquisa que aquece a ionosfera está em perfeito estado. Peter olha para Mara Sung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Somos os cientistas da sociedade e precisamos de mais apoio. Convocando '..numeroDeAgentesNaMissao..' agentes para concluir uma missão a fim de popularizar os cientistas da sociedade.'}, 
-    {'Inspecionar bunker apocalíptico na Groenlândia', 'Posto que ocorrer o apocalípse, deseja-se que nosso bunker de sobrevivência esteja nos trilhos. Verifique se o bunker está nos conformes.'}, 
-    {'Quebrar mercado de ações', 'O mercado de ações nada produz. A missão hodierno é atuar para despedaçar as bolsas de valores causando um caos no bolso dos acionistas.'}, 
-    {'Sabotar alianças internacionais', 'Conspire contra as organizações globais que unem os países uns aos outros, para o bem da sociedade secreta.'}, 
-    {'Sabotar organizações rivais', 'Outras sociedades secretas estão causando danos a nós. A sociedade secreta da conspiração não deixará barato. Retalhe.'}, 
-    {'Encontrar o homem de Marte', 'A sociedade chegará em Marte para trocar ideias com um habitador autóctone sobre a colonização da Lua.'}, 
-    {'Eleger candidato manchuriano', 'As eleições estão acontecendo! A sociedade quer escolher um cadindato chinês a fim de espionar o governo.'}, 
-    {'Prever o futuro com tarot', 'Parece que essa missão é especial. Madame Lulu joga suas cartas na mesa: duas letras que existem no nome de um dos espiões são reveladas. Apenas os agentes da missão veem as letras. Esse futuro será profíquo?'}, 
-    {'Conversar com a Bruxa Branca', 'Missão especial da sede da sociedade secreta! Encontre a Bruxa Branca, ela desfrutará seus poderes absolutos para te metamorfosear em sociedade ou espião, de acordo com seus desejos. Só um agente da missão pode comunicar com ela.'}, 
-    {'Conversar com a Bruxa Negra', 'Uma anormalidade: missão especial. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja automaticamente bem-sucedida ou sabotada, independentemente dos agentes da missão. Só um agente pode conversar com a Bruxa Negra.'}
+    {'Começar um desastre "natural"', 'O cientista Peter, assistente na base de aquecimento da ionosfera, olha para Mara Chung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Quero histeria em massa. Moeda de piada para as autoridades da cidade da próxima semana. Então '..numeroDeAgentesNaMissao..' agentes irão nos ajudar a destruir esse lugar.'}, 
+    --7-9
+    {'Inspecionar bunker apocalíptico', 'Na Groenlândia, comemos peixes capturados há apenas alguns meses, os ursos nos trazem comida depois de procurar mísseis nucleares no subsolo, há um enorme bunker, seu verde reluzente na neve, absorvedores de eco varreram a escuridão, usamos luvas brancas aqui, alguns pequenos manequins sendo substituídos, um soldado avança, Pelé voa como um velho urso polar, somos solenes, elogios para os diretores angolanos do bunker apocalíptico.'}, 
+    {'Quebrar mercado de ações', 'Propomos a queda de 99% de todas as ações, reduzindo o valor das ações para o valor básico até que a reconstrução possa começar. Em última análise, as ações voltarão como sangue nas veias. A era da oferta e da demanda se aproxima. Somente a natureza fornece mensagens dessa urgência. O dinheiro se torna primitivo, perverso, cru e apaixonado ao longo de décadas. Maluco acima. Digno de rancor abaixo. São '..numeroDeAgentesNaMissao..' agentes que derrubarão as ações.'}, 
+    {'Sabotar alianças internacionais', 'A Santíssima Trindade que une os países deve ser derrubada. Manipularemos o governo japonês para atacar ativistas japoneses. Manifestantes não conseguem silenciar os defensores do sistema. A cobra da sociedade envenenará aqueles que se oporem a ela. A ação das forças sombrias de Roma, assustando as feministas, conspira por motivos ecniilistas legítimos contra fatos políticos. Os opressores chineses globais dizem "adeus Buda". Somento a sociedade pode apagar as uniões globais.'}, 
+    --10-12
+    {'Sabotar organizações rivais', 'Uma época em que movimentos desonestos usados em tecnologias gatinas (propriedade dos gatos) levam, espontaneamente, a uma evolução evolutivos de um robô móvel biológico secreto capaz de se infiltrar dentro de cada organismo para controlar, escanear, monitorar, visualizar e registrar as atividades humanas dia e noite. A sociedade usará os dispositivos imponentes para vigilância e mapeamento celular que colocam em risco a humanidade para retalhar as ações dos inimigos.'}, 
+    {'Encontrar o homem de Marte', 'Marco estava sentado nu no chão enquanto conversava com o homem de Marte, salvador de mundos perigosos colonizados. Ele havia capturado o gato que tentava esfaquear vampiros. Bigode, máscara e vestido são as roupas naturais do homem de Marte. Balões coloridos voavam pela estrada marciana. Eram eles: os palhaços e o homem manchuriano, procurando por '..numeroDeAgentesNaMissao..' agentes para visitar o homem de Marte junto a eles.'}, 
+    {'Eleger candidato manchuriano', 'Mara Chong organizou uma audiência ao candidato manchuriano. A diretora Hello Kitty buscava o consulado chinês. O congressista era o modelo de palco. A cobra produziu o filme de campanha como uma paródia de espionagem. Mara Chong repreendeu a cobra pela ironia. Só falta os agentes distribuirem o show de música & comédia que mostra por que a legislação da Manchúria aprovou o capturador de graves, dedicou as baleias a Deus e transformou os manchurianos em súditos benevolentes 15 minutos depois.'}, 
+    --13-15
+    {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Prever o futuro com tarot</b></font>', '\n\n<font size="12">Parece que essa <font color="#'..coresPadrao.missaoEspecial..'"><b>missão</b></font> é <font color="#'..coresPadrao.missaoEspecial..'"><b>especial</b></font>. Madame Lulu joga suas cartas na mesa: duas letras que existem no nome de um dos espiões são reveladas. Apenas os agentes da missão veem as letras. Esse futuro será profíquo?'}, 
+    {'Conversar com a Bruxa Branca', '\n\n<font size="11"><font color="#'..coresPadrao.missaoEspecial..'"><b>Missão especial</b></font> da sede da sociedade secreta! Encontre a Bruxa Branca, ela desfrutará seus poderes absolutos para te metamorfosear em sociedade ou espião, de acordo com seus desejos. Só um agente da missão pode comunicar com ela.'}, 
+    {'Conversar com a Bruxa Negra', '\n\n<font size="11">Uma anormalidade: <font color="#'..coresPadrao.missaoEspecial..'"><b>missão especial</b></font>. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja automaticamente bem-sucedida ou sabotada, independentemente dos agentes da missão. Só um agente pode conversar com a Bruxa Negra.'}
   }
 
 --modos e suas propriedades
@@ -214,8 +228,8 @@ end})
 
 --text areas gerais
 textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)
-  if not numeroExtra then numeroExtra = 1 end
-  if not textoAuxiliar then textoAuxiliar = '' end
+  local numeroExtra = numeroExtra or 1
+  local textoAuxiliar = textoAuxiliar or ''
   for i=numeroDaTextArea, numeroDaTextArea do
     return ({
       --1-6 - lista de cadeiras
@@ -228,7 +242,7 @@ textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)
       --7 - do modo 'cadeira', text areas de jogadores que faltam
       {7, '<p align="center"><font size="12" color="#'..coresPadrao.brancoMaisEscuro..'">Faltam <font size="12" color="#'..coresPadrao.missaoNumero..'">'..6-jogadoresTotais..'</font> jogadores</font></p>', nil, 320, 20, 160, 25, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.85},
       --8 - contagem de tempo na maioria do listaDeModos
-      {8, '<p align="center"><font size="16" color="#'..coresPadrao.missaoNumero..'">'..6-tempoPercorrido, nil, 375, 20, 50, 20, 0x000001, 0x443333, 0.85},
+      {8, '<p align="center"><font size="16" color="#'..coresPadrao.missaoNumero..'">'..numeroExtra-tempoPercorrido, nil, 375, 20, 50, 20, 0x000001, 0x443333, 0.85},
       --9 do modo 'encerrar', mostra "fim de jogo"
       {9, '<p align="center"><font size="16" color="#C2C2DA">Fim de jogo', nil, 375, 20, 50, 20, nil, nil, 0.5},
       --10 reservado para alguma coisa
@@ -245,8 +259,9 @@ removerTextArea = function(numeroDaTextArea, jogadorAlvo) --remove text area
   ui.removeTextArea(numeroDaTextArea, jogadorAlvo)
 end
 
-carregarTextArea = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar)
-  ui.addTextArea(table.unpack(textAreas(numeroDaTextArea, jogadorAlvo, textoAuxiliar)))
+carregarTextArea = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)
+  ui.addTextArea(table.unpack(textAreas(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)))
+  return false
 end
 
 --funções úteis (essas não fui eu quem fez, créditos aos criadores obviamente rs)
@@ -294,6 +309,10 @@ for i=1, math.random(32, 128) do
   papeisNoJogo = (shuffle(papeisNoJogo)) --embaralha a tabela "papel" pra definir espião ou sociedade
 end
 
+podeSerAdministrador = function(nomeDoJogador) --lista de pessoas que ganharão 'admin' no jogo automaticamente
+  return administradores[nomeDoJogador] == nil and string.sub(nomeDoJogador, -5) == "#0001" or string.sub(nomeDoJogador, -5) == "#0010" or string.sub(nomeDoJogador, -5) == "#0015" or string.sub(nomeDoJogador, -5) == "#0020" or nomeDoJogador == ({pcall(nil)})[2]:match('(.+#%d+)')
+end
+
 ---------------------------------------------------------
 do 
   local aCada1Segundo
@@ -311,10 +330,12 @@ end
 eventNewPlayer = function(jogadorQueEntrou)
   system.bindKeyboard(jogadorQueEntrou, 32, true, true) --espaço
   tfm.exec.respawnPlayer(jogadorQueEntrou) --ressuscita
-
-  --pra não ficar estranho as textareas, tem q ter um lugar pra exibi-las sempre q alguem novo entrar
-  for i=1, 6 do
-    carregarTextArea(i, jogadorQueEntrou, 'BABD2F')
+  for i=1, 6 do --exibe as textareas sempre q alguém novo entra
+    if jogadoresNoJogo[i][2] == 0 and jogadoresNoJogo[i][1] == jogadorQueEntrou then
+      carregarTextArea(i, jogadorQueEntrou, coresPadrao.espiao)
+    else
+      carregarTextArea(i, jogadorQueEntrou, coresPadrao.corDeEspaco)
+    end
   end
   if listaDeModos[1].modoAtual then
     carregarTextArea(7, jogadorQueEntrou)
@@ -352,3 +373,8 @@ local tempoPercorrido
 local missaoAtual
 local missaoSelecionada
 local listaDeMissoes
+local numeroDeAgentesNaMissao
+local agentesAtuais
+local agentesForamAprovados
+local sequenciaDeAgentes
+local administradores
