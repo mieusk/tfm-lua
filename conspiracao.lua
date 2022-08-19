@@ -55,8 +55,8 @@ local scriptDoGato = coroutine.create(function() --coroutine que será chamada p
     if listaDeModos[3].modoAtual then --exibir - missao atual
       carregarTextArea(listaDeModos[3].textAreaDeTempo)
       if listaDeModos[3].primeiraVez then
-        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288;&#12288;&#12288;<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
-        carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoDeTexto..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
+        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288;&#12288;<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
+        carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
       elseif tempoPercorrido == 5 then
         carregarTextArea(11, nil, '')
       end
@@ -88,7 +88,7 @@ end)
 --randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
 math.randomseed(math.random(os.time()+math.random()^286637850%64666/math.random()^math.random(os.time(), os.time()+1099511627776)*math.random(32, 64), 60525076796/478324)+1000000000)
 
---desativa shaman, inicio de jogo, tempo, morte automática
+--desativa shaman, inicio de jogo, tempo, morte automática e ponto automático
 do local disable = {'AutoShaman', 'AutoNewGame', 'AutoTimeLeft', 'AfkDeath', 'AutoScore'}
   for i=1, #disable do
     tfm.exec['disable'..disable[i]]()
@@ -103,6 +103,8 @@ jogadoresTotais = 0 --total de jogadores nas cadeiras
 --cores usadas no jogo para as textareas
 coresPadrao = {brancoDeTexto = 'FDFDFE',
     brancoMaisEscuro = 'EDEDEE',
+    textAreaFundo = '000001',
+    textAreaBorda = '554444',
     espiao = 'FF0C40', --cor vermelho para espião
     sociedade = '10FF54',
     lider = '0950FF',
@@ -111,15 +113,23 @@ coresPadrao = {brancoDeTexto = 'FDFDFE',
 --tempo total percorrido no modo
 tempoPercorrido = 0
 
+missaoSelecionada = 5 --número do título da missão selecionada
+missaoAtual = 1 --número da missão atual
+numeroDeAgentesNaMissao = 2
+
+--agentes da missão atual
+local agentesAtuais = {} 
+local agentesForamAprovados = false --se agentes foram aprovados
+local sequenciaDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}} --sequência de número de agente nas missões
+
 --título das missões
 listaDeMissoes = {
-    {'Achatar a Terra', 'Ordem superior: que a Terra é plana todo o globo sabe. Mas para caucionar que ela jamais fique curva, a sociedade achatá-la-á mais ainda.'}, 
-    {'Fazer chapéus de alumínio', 'Para abster o manejo mental transversalmente das micro-ondas, a sociedade fornecerá chapéus de alumínio para seus membros. Precisa-se de alguns agentes para perfazer essa missão.'}, 
-    {'Gravar pouso falso na Lua', 'A fim de a URSS recear de inveja, a sociedade compô-lo-á seu apropriado assentamento de foguete até a Lua. Produzido em Hollywood...'}, 
-    {'Visitar família reptiliana da Rainha Elizabeth II', 'O acordo da sociedade juntamente os répteis nunca estive tão longínquo. Uma visita reaproximar-nos-ia.'}, 
-    {'Encontrar os descendentes do Conde Drácula', 'Través de sacrifícios, a sociedade unir-se-á junto aos vampíros romenianos que descendem do Conde Drácula. O domínio vampírico dará uma superioridade da sociedade sobre a multidão ordinário'}, 
-    {'Explorar cidade perdida da Amazônia', 'Há boatos que dizem que cidades indígenas de 10 milhões de anos estão perdidas na Amazônia. A sociedade intrigou-se. Escolha agentes para explorar.'}, 
-    {'Começar um desastre "natural"', 'Aqueça a ionosfera para manejar o clima mundial. Destarte, a sociedade secreta poderá dominar governos inteiros través dos desastres climáticos.'}, 
+    {'Achatar a Terra', 'Que a Terra é plana todo o globo sabe. Mas a sociedade viu o capitão do exército americano comentando sobre a contrução de equipamentos de terraformação para curvar a Terra localizados no parque de Tallahassee. Sugeriu-se que '..numeroDeAgentesNaMissao..' agentes da sociedade viajassem para os parques da cidade, onde o congressista Manchuriano e os agentes, acompanhados por quatro carros de palhaços chamando a atenção do público, destruiriam a máquina e achataria a Terra novamente.'}, 
+    {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental transversalmente das micro-ondas. Cada folha tem duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
+    {'Gravar pouso falso na Lua', 'O diretor da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isso. Atenciosamente, diretor da conspiração."'}, 
+    {'Visitar família da Elizabeth II', 'Uma carta escrita em nome de Elizabeth II para um de seus favoritos marítimos contava sobre a saudades que sentia de nossa sociedade. A britânica Elizabeth II provou ser uma marca igualmente evocativa de monarca, e não um gosto resistente ao ridículo. À medida que o país se apressava de contar séculos de sagas e dinastias, Elizabeth II, a imortal, retratou os leitores com o registro de suas aventuras no mar. Somente visitá-la mataria essas saudades e nos reaproximaria dela.'}, 
+    {'Achar filhos do Conde Drácula', 'O gato sugeriu fincar uma estaca no coração do vampiro para que ele se dissipe e sejamos mais fortes. Ah! Bobeira... Nadaremos em ouro com a aliança dos vampiros. Justiça, Romênia, preferência. Desde quando você quer justiça para os cristãos? Peter (memória falsa) sugeriu que um vampiro de aparência humana se tornasse humano (ah hah, perfeito porque essa pessoa provavelmente ficaria melhor). O gato lamentavelmente esfaqueou o vampiro romeniano e rasgou sua linda lingerie.'}, 
+    {'Começar um desastre "natural"', 'A base de pesquisa que aquece a ionosfera está em perfeito estado. Peter olha para Mara Sung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Somos os cientistas da sociedade e precisamos de mais apoio. Convocando '..numeroDeAgentesNaMissao..' agentes para concluir uma missão a fim de popularizar os cientistas da sociedade.'}, 
     {'Inspecionar bunker apocalíptico na Groenlândia', 'Posto que ocorrer o apocalípse, deseja-se que nosso bunker de sobrevivência esteja nos trilhos. Verifique se o bunker está nos conformes.'}, 
     {'Quebrar mercado de ações', 'O mercado de ações nada produz. A missão hodierno é atuar para despedaçar as bolsas de valores causando um caos no bolso dos acionistas.'}, 
     {'Sabotar alianças internacionais', 'Conspire contra as organizações globais que unem os países uns aos outros, para o bem da sociedade secreta.'}, 
@@ -130,15 +140,6 @@ listaDeMissoes = {
     {'Conversar com a Bruxa Branca', 'Missão especial da sede da sociedade secreta! Encontre a Bruxa Branca, ela desfrutará seus poderes absolutos para te metamorfosear em sociedade ou espião, de acordo com seus desejos. Só um agente da missão pode comunicar com ela.'}, 
     {'Conversar com a Bruxa Negra', 'Uma anormalidade: missão especial. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja automaticamente bem-sucedida ou sabotada, independentemente dos agentes da missão. Só um agente pode conversar com a Bruxa Negra.'}
   }
-
-
-missaoSelecionada = 1 --número do título da missão selecionada
-missaoAtual = 1 --número da missão atual
-
---agentes da missão atual
-local agentesAtuais = {} 
-local agentesForamAprovados = false --se agentes foram aprovados
-local sequenciaDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}} --sequência de número de agente nas missões
 
 --modos e suas propriedades
 listaDeModos = { 
@@ -225,17 +226,17 @@ textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)
       {5, "<p align='center'><font size='10' color='#"..tostring(textoAuxiliar).."'><b>"..jogadoresNoJogo[5][1], jogadorAlvo, 550, 100, 120, 20, nil, nil, 0, false},
       {6, "<p align='center'><font size='10' color='#"..tostring(textoAuxiliar).."'><b>"..jogadoresNoJogo[6][1], jogadorAlvo, 700, 100, 100, 20, nil, nil, 0, false},
       --7 - do modo 'cadeira', text areas de jogadores que faltam
-      {7, '<p align="center"><font size="12" color="#C2C2DA">Faltam <font size="12" color="#ED67EA">'..6-jogadoresTotais..'</font> jogadores</font></p>', nil, 320, 20, 160, 25, 0x000001, 0x7F002A, 0.85},
+      {7, '<p align="center"><font size="12" color="#'..coresPadrao.brancoMaisEscuro..'">Faltam <font size="12" color="#'..coresPadrao.missaoNumero..'">'..6-jogadoresTotais..'</font> jogadores</font></p>', nil, 320, 20, 160, 25, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.85},
       --8 - contagem de tempo na maioria do listaDeModos
-      {8, '<p align="center"><font size="16" color="#FDFE81">'..6-tempoPercorrido, nil, 375, 20, 50, 20, 0x000001, 0x443333, 0.85},
+      {8, '<p align="center"><font size="16" color="#'..coresPadrao.missaoNumero..'">'..6-tempoPercorrido, nil, 375, 20, 50, 20, 0x000001, 0x443333, 0.85},
       --9 do modo 'encerrar', mostra "fim de jogo"
       {9, '<p align="center"><font size="16" color="#C2C2DA">Fim de jogo', nil, 375, 20, 50, 20, nil, nil, 0.5},
       --10 reservado para alguma coisa
-      {10,'reservado', nil, 160, 125, 480, 240, 0x000001, 0x554444, 0.94, false},
+      {10,'reservado', nil, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
       --11-16 do modo 'iniciar', mostra se é espião ou sociedade; do modo 'exibir', mostra a missão e quem está escolhendo a missão
-      {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, 0x000001, 0x554444, 0.94, false},
+      {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
       --do modo exibir, mostra a descrissão da missão
-      {12, textoAuxiliar, jogadorAlvo, 325, 190, 215, 175, nil, nil, 0, false}
+      {12, textoAuxiliar, jogadorAlvo, 310, 180, 235, 175, nil, nil, 0, false}
   })[i] --{10,'<font size="16" color="#00DABB"><B>&nbsp;&nbsp;Missão #'..missaoAtual..'</B></font>\n<font size="17"><B><p align="center">'..listaDeMissoes[numeroExtra]..'&#12288;&#12288;&#12288;&#12288;&#12288;&#12288;&#12288;&#12288;', nil, 160, 125, 480, 240, 0x000001, 0x554444, 0.94, false}
   end
 end
@@ -332,8 +333,8 @@ eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato, _)
       if posicaoXDoRato > 25-140+i*140 and posicaoXDoRato < 75-140+i*140 and jogadoresNoJogo[i][1] == '</b><font size="11">[ espaço ]' then --verifica se o posicaoXDoRato do jogador é em cima de uma cadeira
         jogadoresNoJogo[i] = {nomeDoJogador, papeisNoJogo[i]}; carregarTextArea(i, nil, coresPadrao.brancoDeTexto); jogadoresTotais = jogadoresTotais+1; --loadTextArea(7) --insere txtareas
       end
-    end
-    ui.addPopup(3, 0, jogadoresNoJogo[1][1]..' : '..jogadoresNoJogo[1][2]..'\n'..jogadoresNoJogo[2][1]..' : '..jogadoresNoJogo[2][2]..'\n'..jogadoresNoJogo[3][1]..' : '..jogadoresNoJogo[3][2]..'\n'..jogadoresNoJogo[4][1]..' : '..jogadoresNoJogo[4][2]..'\n'..jogadoresNoJogo[5][1]..' : '..jogadoresNoJogo[5][2]..'\n'..jogadoresNoJogo[6][1]..' : '..jogadoresNoJogo[6][2]..'\n', nil, 575, 55, 200, false)
+    end --tirar popup depois
+    --ui.addPopup(3, 0, jogadoresNoJogo[1][1]..' : '..jogadoresNoJogo[1][2]..'\n'..jogadoresNoJogo[2][1]..' : '..jogadoresNoJogo[2][2]..'\n'..jogadoresNoJogo[3][1]..' : '..jogadoresNoJogo[3][2]..'\n'..jogadoresNoJogo[4][1]..' : '..jogadoresNoJogo[4][2]..'\n'..jogadoresNoJogo[5][1]..' : '..jogadoresNoJogo[5][2]..'\n'..jogadoresNoJogo[6][1]..' : '..jogadoresNoJogo[6][2]..'\n', nil, 575, 55, 200, false)
   end
 end
 
