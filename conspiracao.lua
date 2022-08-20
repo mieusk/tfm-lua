@@ -38,8 +38,8 @@ local ui_addTextArea = ui.addTextArea
 local ui_removeTextArea = ui.removeTextArea
 
 --execs
-local tfm_exec_removeImage = tfm.exec.removeImage
 local tfm_exec_addImage = tfm.exec.addImage
+local tfm_exec_removeImage = tfm.exec.removeImage
 local tfm_exec_newGame = tfm.exec.newGame
 local tfm_exec_respawnPlayer = tfm.exec.respawnPlayer
 local tfm_exec_setPlayerScore = tfm.exec.setPlayerScore
@@ -49,6 +49,13 @@ local math_random = math.random
 local math_randomseed = math.randomseed
 local os_time = os.time
 local system_bindKeyboard = system.bindKeyboard
+--não colocaremos o tfm.get.room.playerList pois este é uma table e não uma função
+--ps. é desnecessário adicionar funções globais nesta lista que são usadas só algumas vezes
+--isso só é útil qnd ela é usada 200 ou + vezes no script
+
+--randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
+math_randomseed(math_random(os_time()+math_random()^286637850%64666/math_random()^math_random(os_time(), os_time()+1099511627776)*math_random(32, 64), 60525076796/478324)+1000000000)
+
 
 --desativa shaman, inicio de jogo, tempo, morte automática e ponto automático
 do local disable = {'AutoShaman', 'AutoNewGame', 'AutoTimeLeft', 'AfkDeath', 'AutoScore'}
@@ -64,9 +71,9 @@ local administradores = {['Preuclides#3383'] = true} --se é administrador
 local jogadoresGlobais = {['Preuclides#3383'] = 0} --jogadores e seu número de vitórias
 
 --tabelas do jogo
-local jogadoresNaSala = {}
+local jogadoresNaSala = {} --lista de jogadores na sala
 
-local jogadoresNoJogo = {} --{nick, papel}
+local jogadoresNoJogo = {} --{nick, papel} lista de jogadores na cadeira
 local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade
 local jogadoresTotais = 0 --total de jogadores nas cadeiras
 
@@ -87,29 +94,34 @@ local coresPadrao = {brancoDeTexto = 'FDFDFE',
 local tempoPercorrido = 0
 
 --elementos da missão
-local liderDaMissao = 'Inconnu#0000'
+local liderDaMissao = 'Inconnu#0000' --quem estará escolhendo os agentes
+local liderGenero --nenhum, feminino e masculino
 local missaoSelecionada = 1 --número do título da missão selecionada
 local missaoAtual = 1 --número da missão atual
-local numeroDeAgentesNaMissao = 2
-
---mensagem aleatoria pra exibir
-local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Em nome do pai.', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Estamos de olho.', 'Você está sendo observado.', 'A sociedade não perdoa.', 'Você está estranhamente de bom humor.', 'Esse sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Julgue!', 'Será que é uma boa?'}
+local numeroDeAgentesNaMissao = 0 --quantos agentes terão na missão atual
+local missoesSabotadas = 0 --número de missões sabotadas (se 3, jogo acaba)
+local missoesSucedidas = 0 --numero de missões bem-sucedidas (se 3, jogo acaba)
 
 --agentes da missão atual
-local agentesAtuais = {} 
+local agentesAtuais = {} --agentes escolhidos para a missão atual
 local agentesForamAprovados = false --se agentes foram aprovados
-local sequenciaDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}} --sequência de número de agente nas missões
+local sequenciaPossivelDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}, {2, 3, 2, 3, 2}} --sequência de número de agente nas missões
+local sequenciaDaPartida = sequenciaPossivelDeAgentes[math_random(#sequenciaPossivelDeAgentes)] --a sequência de agentes na partida atual
+
+--mensagens específicas pra exibir
+local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Em nome do pai.', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Estamos de olho.', 'Você está sendo observado.', 'A sociedade não perdoa.', 'Você está estranhamente de bom humor.', 'Este sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Julgue!', 'Será que é uma boa?'}
+local pronomes = {[0] = 'Elu', [1] = 'Ela', [2] = 'Ele'} --mostra elu, ela ou ele nas textareas
 
 --título das missões
 local listaDeMissoes = {
     --1-3
     {'Achatar a Terra', 'Que a Terra é plana todo o globo sabe. Mas a sociedade viu o capitão do exército americano comentando sobre a contrução de equipamentos de terraformação para curvar a Terra localizados no parque de Tallahassee. Sugeriu-se que '..numeroDeAgentesNaMissao..' agentes da sociedade viajassem para os parques da cidade, onde o congressista Manchuriano e os agentes, acompanhados por quatro carros de palhaços chamando a atenção do público, destruiriam a máquina e achataria a Terra novamente.'}, 
     {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental das micro-ondas, a fábrica de chapéus alumínio inspirou-se em folhas de duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
-    {'Gravar pouso falso na Lua', 'A diretora da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isso. Atenciosamente, Diretora Hello Kitty". O membro '..liderDaMissao..' vai nos liderar nessa.'}, 
+    {'Gravar pouso falso na Lua', 'A diretora da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isto. Atenciosamente, Diretora Hello Kitty". O membro '..liderDaMissao..' vai nos liderar nessa.'}, 
     --4-6
     {'Visitar família da Elizabeth II', 'Uma carta escrita em nome da reptiliana Elizabeth II para um de seus favoritos marítimos contava sobre o desejo dos répteis em aliar-se à nossa sociedade. A britânica Elizabeth II provou ser uma marca igualmente evocativa de monarca, e não um gosto resistente ao ridículo. À medida que o país se apressava de contar séculos de sagas e dinastias, Elizabeth II, a imortal, retratou os leitores com o registro de suas aventuras nos pântamos. Devemos visitar o pântano secreto da rainha para firmar a aliança.'}, 
     {'Achar filhos do Conde Drácula', 'O gato sugeriu fincar uma estaca no coração do vampiro para que ele se dissipe e sejamos mais fortes. Ah! Bobeira... Nadaremos em ouro com a aliança dos vampiros. Justiça, Romênia, preferência. Desde quando você quer justiça para os cristãos? Peter (memória falsa) sugeriu que um vampiro de aparência humana se tornasse humano (ah hah, perfeito porque essa pessoa provavelmente ficaria melhor). O gato lamentavelmente esfaqueou o vampiro romeniano e rasgou sua linda lingerie.'}, 
-    {'Começar um desastre "natural"', 'O cientista Peter, assistente na base de aquecimento da ionosfera, olha para Mara Chung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Histeria em massa. Moeda de piada para as autoridades da cidade da próxima semana. Aqueça a ionosfera na temperatura máxima com a ajuda de '..numeroDeAgentesNaMissao..' agentes para destruir esse lugar.'}, 
+    {'Começar um desastre "natural"', 'O cientista Peter, assistente na base de aquecimento da ionosfera, olha para Mara Chung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Histeria em massa. Moeda de piada para as autoridades da cidade da próxima semana. Aqueça a ionosfera na temperatura máxima com a ajuda de '..numeroDeAgentesNaMissao..' agentes para destruir este lugar.'}, 
     --7-9
     {'Inspec. bunker apocalíptico', 'Na Groenlândia comemos peixes capturados há apenas alguns meses, os ursos nos trazem comida depois de procurar mísseis nucleares no subsolo, há um enorme bunker, seu verde reluzente na neve, absorvedores de eco varreram a escuridão, usamos luvas brancas aqui, alguns pequenos manequins sendo substituídos, um soldado avança, Pelé voa como um velho urso polar, somos solenes, elogios para o diretor angolano David do bunker. Pede para inspecionar.'}, 
     {'Quebrar mercado de ações', 'Propomos a queda de 99% de todas as ações, reduzindo o valor das ações para o valor básico até que a reconstrução possa começar. Em última análise, as ações voltarão como sangue nas veias. A era da oferta e da demanda se aproxima. Somente a natureza fornece mensagens dessa urgência. O dinheiro se torna primitivo, perverso, cru e apaixonado ao longo de décadas. Maluco acima. Digno de rancor abaixo. São '..numeroDeAgentesNaMissao..' agentes que derrubarão as ações e acabarão com o dinheiro desprezível que controla nossas vidas.'}, 
@@ -119,7 +131,7 @@ local listaDeMissoes = {
     {'Encontrar o homem de Marte', 'Marco estava sentado nu no chão enquanto conversava com o homem de Marte, salvador de mundos perigosos colonizados. Marco (memória real) lhe oferecia um gato em troca da salvação da Terra (que é plana). Bigode, máscara e vestido são as roupas naturais do homem de Marte. Balões coloridos voavam pela estrada marciana. Eram eles: os palhaços e o homem manchuriano, que procuravam pela companhia de '..numeroDeAgentesNaMissao..' agentes para visitá-lo. Precisamos de bigodes, máscaras e vestidos para nos juntar a eles.'}, 
     {'Eleger candidato manchuriano', 'Mara Chong organizou uma audiência ao candidato manchuriano. A diretora Hello Kitty buscava o consulado chinês. O congressista era o modelo de palco. A cobra produziu o filme de campanha como uma paródia de espionagem. Mara Chong repreendeu a cobra pela ironia. Só falta os agentes distribuirem o show de música & comédia que mostra por que a legislação da Manchúria aprovou o capturador de graves, dedicou as baleias a Deus e transformou os manchurianos em súditos benevolentes 15 minutos depois.'}, 
     --13-15
-    {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Prever o futuro com tarot</b></font>', '\n\n<font size="12">Parece que essa <font color="#'..coresPadrao.missaoEspecial..'"><b>missão</b></font> é <font color="#'..coresPadrao.missaoEspecial..'"><b>especial</b></font>. Madame Lulu joga suas cartas na mesa: duas letras que existem no nome de um dos espiões são reveladas. Apenas os agentes da missão veem as letras. Esse futuro será profíquo?'}, 
+    {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Prever o futuro com tarot</b></font>', '\n\n<font size="12">Parece que essa <font color="#'..coresPadrao.missaoEspecial..'"><b>missão</b></font> é <font color="#'..coresPadrao.missaoEspecial..'"><b>especial</b></font>. Madame Lulu joga suas cartas na mesa: duas letras que existem no nome de um dos espiões são reveladas. Apenas os agentes da missão veem as letras. Este futuro será profíquo?'}, 
     {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Conversar com a Bruxa Branca</b></font>', '\n\n<font size="12"><font color="#'..coresPadrao.missaoEspecial..'"><b>Missão especial</b></font> da sede da sociedade secreta! Encontre a Bruxa Branca, ela desfrutará seus poderes absolutos para te metamorfosear em sociedade ou espião, de acordo com seus desejos. Só um agente da missão pode se comunicar com ela.'}, 
     {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Conversar com a Bruxa Negra</b></font>', '\n\n<font size="12">Anormalidade: <font color="#'..coresPadrao.missaoEspecial..'"><b>missão especial</b></font>. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja bem-sucedida ou sabotada de modo automático, sem importar quais são os agentes da missão. Só um agente pode conversar com a Bruxa Negra.'}
   }
@@ -142,7 +154,7 @@ local listaDeModos = {
     modoAtual = false, --se esse é o modo ativo ou não
     textAreaDeTempo = 8, --número da textArea de tempo
     textAreasDoModo = 11, --número da textArea importante
-    duracaoDoModo = 5 --duração do modo
+    duracaoDoModo = 10 --duração do modo
     },
 
    { --exibição da missão que iniciará 3
@@ -151,7 +163,7 @@ local listaDeModos = {
     modoAtual = false, --se esse é o modo ativo ou não
     textAreaDeTempo = 8, --número da textArea de tempo
     textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 10 --duração do modo
+    duracaoDoModo = 16 --duração do modo
     },
 
   { --seleção de agentes pelo líder 4
@@ -160,7 +172,7 @@ local listaDeModos = {
     modoAtual = false, --se esse é o modo ativo ou não
     textAreaDeTempo = 8, --número da textArea de tempo
     textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 0 --duração do modo
+    duracaoDoModo = 45 --duração do modo
     },
 
   { --aprovação da missão pela população 5
@@ -216,7 +228,7 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
       --9 do modo 'encerrar', mostra "fim de jogo"
       {9, '<p align="center"><font size="16" color="#C2C2DA">Fim de jogo', nil, 375, 20, 50, 20, nil, nil, 0.5},
       --10 reservado para alguma coisa
-      {10,'\n\n\n\n\n\n\n\n\n\n<p align="center"><font color="#FFFFFF" size="24" face="lucida console"><b> <font color="#FF0000">[ ERRO ]</font> O jogo quebrou!\nRecarregue o script\nou mude de sala para corrigir.</b>\n\n\n\n<font size="18">Ou chame no Discord: flamma#0050 caso o erro persista.</font></font>', nil, 0, 0, 800, 400, tonumber('0x'..coresPadrao.brancoMaisEscuro), tonumber('0x'..coresPadrao.brancoMaisEscuro), 0, false},
+      {10,'\n\n\n\n\n\n\n\n\n\n<p align="center"><font color="#FFFFFF" size="24" face="lucida console"><b> <font color="#FF0000">[ ERRO ]</font> O jogo quebrou!\nRecarregue o script\nou mude de sala para corrigir.</b>\n\n\n\n<font size="18">Chame no Discord: flamma#0050 caso o erro persista.</font></font>', nil, 0, 0, 800, 400, tonumber('0x'..coresPadrao.brancoMaisEscuro), tonumber('0x'..coresPadrao.brancoMaisEscuro), 0, false},
       --11 do modo 'iniciar', mostra se é espião ou sociedade; do modo 'exibir', mostra a missão e quem está escolhendo a missão
       {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
       --do modo exibir, mostra a descrição da missão
@@ -228,7 +240,7 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
 end
 
 local removerTextArea = function(numeroDaTextArea, jogadorAlvo, ...) --remove text area
-  if ... then
+  if ... then --se tem + de 1 textarea pra remover
     local argumentos = {...}
     for i=1, #argumentos do
       ui_removeTextArea(argumentos[i], jogadorAlvo)
@@ -237,7 +249,7 @@ local removerTextArea = function(numeroDaTextArea, jogadorAlvo, ...) --remove te
     ui_removeTextArea(numeroDaTextArea, jogadorAlvo)
 end
 
-local carregarTextArea = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)
+local carregarTextArea = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra) --carrega textarea
   ui_addTextArea(table_unpack(textAreas(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroExtra)))
   return false
 end
@@ -252,11 +264,11 @@ local shuffle = function(tbl) --embaralhador, coloca a tabela em ordem aleatóri
   return t
 end
 
-local string_starts = function(String, Start) --útil também
+local string_starts = function(String, Start) --não está sendo usado, verificar se pode remover
    return string_sub(String,1,string_len(Start))==Start
 end
 
-local try = function(f, catch_f)
+local try = function(f, catch_f) --não está sendo usado, verificar se pode remover
   local status, exception = pcall(f) --função "try" igual ao python, n sei se vou usar
   if not status then
     catch_f(exception)
@@ -269,15 +281,16 @@ local tablelength = function(T) --contar o número de elementos na tabela
   return count
 end
 
-local gradient = function(targetPlayer, force, numeroDeImagens, imagem, camada)
+local gradient = function(targetPlayer, force, imagem, camada) --por sklag#2552, adiciona as imagens em modo degradê
   local y = 0
-  local opacity = 1
-  local numeroDeImagens = numeroDeImagens or 125
+  local opacity = 1.04
+  local numeroDeImagens = 0
   local imagem = imagem or '17948da3319.png'
   local camada = camada or '!'
-  for i = 1, numeroDeImagens do --numero exato em que a opacidade vira '0'
+  while opacity > 0 do
     y = y +1
     opacity = opacity-force
+    numeroDeImagens = numeroDeImagens+1
     tfm_exec_addImage(imagem, camada..'1', 0, y, targetPlayer, 800, 1, nil, opacity)
     tfm_exec_addImage(imagem, camada..'1', 0, 400-y, targetPlayer, 800, 1, nil, opacity)
   end
@@ -306,7 +319,7 @@ local analisarJogador = function(nomeDoJogador)
       carregarTextArea(i, nomeDoJogador, coresPadrao.espiao)
     else
       if jogadoresNoJogo[i][1] == '</b><font size="11">[ espaço ]' then
-        carregarTextArea(i, nomeDoJogador, coresPadrao.corDeEspaco) --"[ espaço ]" se a cadeira tá vazi
+        carregarTextArea(i, nomeDoJogador, coresPadrao.corDeEspaco) --"[ espaço ]" se a cadeira tá vazia
       else
         carregarTextArea(i, nomeDoJogador, coresPadrao.brancoDeTexto) --nome se a cadeira tem gente
       end
@@ -324,18 +337,15 @@ local removerDegrade = function(imagensParaRemover)
 end
 
 --ajustando + coisas
-do local tfm_get_room_playerList = tfm.get.room.playerList
-  for k in next, tfm_get_room_playerList do
-    jogadoresNaSala[#jogadoresNaSala+1] = tfm_get_room_playerList[k].playerName
-  end
+
+for k in next, tfm.get.room.playerList do
+  jogadoresNaSala[#jogadoresNaSala+1] = tfm.get.room.playerList[k].playerName
 end
+
 
 for i=1, #jogadoresNaSala do --executa p'ra todes
   analisarJogador(jogadoresNaSala[i])
 end
-
---randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
-math_randomseed(math_random(os_time()+math_random()^286637850%64666/math_random()^math_random(os_time(), os_time()+1099511627776)*math_random(32, 64), 60525076796/478324)+1000000000)
 
 --tfm.exec.playSound('tfmadv/musique/tfmadv_musique1.mp3')
 --coroutine que será chamada pelo eventLoop
@@ -353,7 +363,6 @@ local scriptDoGato = coroutine_create(function()
     if listaDeModos[2].modoAtual then --iniciar - mostra sociedade ou espião
       carregarTextArea(listaDeModos[2].textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
       if listaDeModos[2].primeiraVez then
-
         degradeParaRemover = gradient(nil, 0.008)
         for i=1, #jogadoresNoJogo do --muda a cor dos espiões para vermelho
         print(jogadoresNoJogo[i][1]..' | '..jogadoresNoJogo[i][2])
@@ -377,11 +386,14 @@ local scriptDoGato = coroutine_create(function()
           missaoSelecionada = math_random(#listaDeMissoes)
         end
         liderDaMissao = jogadoresNoJogo[math_random(#jogadoresNoJogo)][1]
-        listaDeModos[2].modoAtual = false
-        listaDeModos[3].modoAtual = true
         removerTextArea(11, nil)
         tempoPercorrido = 0
+        listaDeModos[2].modoAtual = false
+        listaDeModos[3].modoAtual = true
         coroutine_yield()
+      end
+      if tempoPercorrido >= listaDeModos[2].duracaoDoModo+3 then
+        break
       end
     ------------------------------------------------------------------------------------------
     end
@@ -389,20 +401,23 @@ local scriptDoGato = coroutine_create(function()
     if listaDeModos[3].modoAtual then --exibir - missao atual
       carregarTextArea(listaDeModos[3].textAreaDeTempo, nil, nil, listaDeModos[3].duracaoDoModo)
       if listaDeModos[3].primeiraVez then
+        numeroDeAgentesNaMissao = sequenciaDaPartida[missaoAtual]
         listaDeModos[3].primeiraVez = false
         carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
         carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
-      elseif tempoPercorrido == 5 then
+      elseif tempoPercorrido == listaDeModos[3].duracaoDoModo/2-2 then
         removerTextArea(12, nil)
-      elseif tempoPercorrido == 6 then
-        for i=1, 6 do
-          carregarTextArea(13, jogadoresNoJogo[i][1], '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> escolherá '..numeroDeAgentesNaMissao..' agentes nessa missão.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
-        end
-      elseif tempoPercorrido >= listaDeModos[3].duracaoDoModo then
+      elseif tempoPercorrido == (listaDeModos[3].duracaoDoModo/2)-1 then
+        liderGenero = tfm.get.room.playerList[liderDaMissao] and tfm.get.room.playerList[liderDaMissao].gender or 0
+        carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao..' agentes para completar a missão.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
+      elseif tempoPercorrido == listaDeModos[3].duracaoDoModo then
         removerTextArea(11, nil, 13)
-        kfjakjfa(fakjs)
+        tempoPercorrido = 0
+        listaDeModos[3].modoAtual = false
+        listaDeModos[4].modoAtual = true
+      elseif tempoPercorrido >= listaDeModos[3].duracaoDoModo+3 then
+        break
       end
-
     ------------------------------------------------------------------------------------------
     end
 
@@ -436,6 +451,9 @@ do
     end
     if coroutine_resume(scriptDoGato) == false then
       gradient(nil, 0.008, nil, '17948d9ecc2.png', ':')
+      for i=1, 3 do
+        removerTextArea(10+i)
+      end
       carregarTextArea(10, nil)
       coroutine_resume = function() return true end
     end
@@ -448,8 +466,8 @@ eventNewPlayer = function(jogadorQueEntrou)
   analisarJogador(jogadorQueEntrou)
 end
 
-local sala = {'Preuclides#3383', 'Sklag#2552', 'Eschoje#0000', 'Momomorrow#0000', 'Descont_o#0000', 'Eletroohause#0000'}
-eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato, _)
+local sala = {'Preuclides#3383', 'Sklag#2552', 'Helsey#6880', 'Momomorrow#0000', 'Descont_o#0000', 'Eletroohause#0000'}
+eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato)
    --padrão: jogadores={{Falado#0000, 0}, [Fulano#0000, 1]}
   if teclaPressionada == 32 and listaDeModos[1].modoAtual then --cá temos cada textarea das cadeiras, tb coloca os jogadores na tabela {jogadores}
     for i=1, 6 do
