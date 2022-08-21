@@ -281,9 +281,9 @@ local tablelength = function(T) --contar o número de elementos na tabela
   return count
 end
 
-local gradient = function(targetPlayer, force, imagem, camada) --por sklag#2552, adiciona as imagens em modo degradê
+local gradient = function(targetPlayer, force, imagem, camada, opacity) --por sklag#2552, adiciona as imagens em modo degradê
   local y = 0
-  local opacity = 1.04
+  local opacity = opacity or 1.08
   local numeroDeImagens = 0
   local imagem = imagem or '17948da3319.png'
   local camada = camada or '!'
@@ -332,7 +332,7 @@ end
 
 local removerDegrade = function(imagensParaRemover)
   for i=1, imagensParaRemover do
-    tfm_exec_removeImage(imagensParaRemover[i])
+    tfm_exec_removeImage(i)
   end
 end
 
@@ -364,6 +364,9 @@ local scriptDoGato = coroutine_create(function()
       carregarTextArea(listaDeModos[2].textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
       if listaDeModos[2].primeiraVez then
         degradeParaRemover = gradient(nil, 0.008)
+        if true then
+          break
+        end
         for i=1, #jogadoresNoJogo do --muda a cor dos espiões para vermelho
         print(jogadoresNoJogo[i][1]..' | '..jogadoresNoJogo[i][2])
           if jogadoresNoJogo[i][2] == 0 then
@@ -450,7 +453,7 @@ do
       return
     end
     if coroutine_resume(scriptDoGato) == false then
-      gradient(nil, 0.008, nil, '17948d9ecc2.png', ':')
+      gradient(nil, 0.008, '17948d9ecc2.png', ':', 1)
       for i=1, 3 do
         removerTextArea(10+i)
       end
