@@ -1,5 +1,5 @@
 ---------------------------------------------------------
--- e aí, parsa
+-- e aí, parsa, veio dar uma olhada?
 -- não sou o chico xavier da programação
 -- então é claro q o script vai estar cheio de gambiarras
 -- tem alguma crítica p/ dar? fale à vontade
@@ -28,6 +28,7 @@ local coroutine_yield = coroutine.yield
 --strings
 local string_sub = string.sub
 local string_len = string.len
+local string_format = string.format
 
 --tables
 local table_unpack = table.unpack
@@ -49,9 +50,10 @@ local math_random = math.random
 local math_randomseed = math.randomseed
 local os_time = os.time
 local system_bindKeyboard = system.bindKeyboard
---não colocaremos o tfm.get.room.playerList pois este é uma table e não uma função
---ps. é desnecessário adicionar funções globais nesta lista que são usadas só algumas vezes
+--não coloquei o tfm.get.room.playerList pois este é uma table e não uma função
+--ps: é desnecessário adicionar funções globais que só usamos poucas vezes nesta lista
 --isso só é útil qnd ela é usada 200 ou + vezes no script
+--então as variáveis acima n tem necessidade, coloquei inutilmente mesmo (exceto o addImage e removeImage q uso milhares de vezes)
 
 --randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
 math_randomseed(math_random(os_time()+math_random()^286637850%64666/math_random()^math_random(os_time(), os_time()+1099511627776)*math_random(32, 64), 60525076796/478324)+1000000000)
@@ -277,7 +279,7 @@ end
 
 local tablelength = function(T) --contar o número de elementos na tabela
   local count = 0
-  for _ in pairs(T) do count = count + 1 end
+  for _ in next, T do count = count + 1 end
   return count
 end
 
@@ -298,7 +300,7 @@ local gradient = function(targetPlayer, force, imagem, camada, opacity) --por sk
 end
 
 --+ tabelas e funções do jogo
-for i=1, math_random(32, 128) do
+for i=1, math_random(4, 16) do
   papeisNoJogo = (shuffle(papeisNoJogo)) --embaralha a tabela "papel" pra definir espião ou sociedade
 end
 
@@ -409,7 +411,7 @@ local scriptDoGato = coroutine_create(function()
         removerTextArea(12, nil)
       elseif tempoPercorrido == (listaDeModos[3].duracaoDoModo/2)-1 then
         liderGenero = tfm.get.room.playerList[liderDaMissao] and tfm.get.room.playerList[liderDaMissao].gender or 0
-        carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao..' agentes para completar a missão.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
+        carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao..'.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
       elseif tempoPercorrido == listaDeModos[3].duracaoDoModo then
         removerTextArea(11, nil, 13)
         tempoPercorrido = 0
@@ -442,6 +444,7 @@ local scriptDoGato = coroutine_create(function()
 end)
 
 ---------------------------------------------------------
+--funções chamadas pelo transformice
 do 
   local aCada1Segundo
   eventLoop = function() --"aii mimimi coroutine desnecessaria" AAAAAAAAA RASENGAN
@@ -463,10 +466,10 @@ do
 end
 
 eventNewPlayer = function(jogadorQueEntrou)
-  analisarJogador(jogadorQueEntrou)
+  analisarJogador(jogadorQueEntrou) --novo player = dá oq é necessário p ele
 end
 
-local sala = {'Preuclides#3383', 'Sklag#2552', 'Helsey#6880', 'Momomorrow#0000', 'Descont_o#0000', 'Eletroohause#0000'}
+local sala = {'Preuclides#3383', 'Sklag#2552', 'Helsey#6880', 'Dankuso12#2879', 'Avuhcie#0000', 'Eletroohause#0000'}
 eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato)
    --padrão: jogadores={{Falado#0000, 0}, [Fulano#0000, 1]}
   if teclaPressionada == 32 and listaDeModos[1].modoAtual then --cá temos cada textarea das cadeiras, tb coloca os jogadores na tabela {jogadores}
