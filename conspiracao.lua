@@ -1,5 +1,5 @@
 ---------------------------------------------------------
--- e aí, parsa, veio dar uma olhada?
+-- e aí, parsa
 -- não sou o chico xavier da programação
 -- então é claro q o script vai estar cheio de gambiarras
 -- tem alguma crítica p/ dar? fale à vontade
@@ -364,9 +364,6 @@ local scriptDoGato = coroutine_create(function()
       carregarTextArea(listaDeModos[2].textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
       if listaDeModos[2].primeiraVez then
         degradeParaRemover = gradient(nil, 0.008)
-        if true then
-          break
-        end
         for i=1, #jogadoresNoJogo do --muda a cor dos espiões para vermelho
         print(jogadoresNoJogo[i][1]..' | '..jogadoresNoJogo[i][2])
           if jogadoresNoJogo[i][2] == 0 then
@@ -453,7 +450,7 @@ do
       return
     end
     if coroutine_resume(scriptDoGato) == false then
-      gradient(nil, 0.008, '17948d9ecc2.png', ':', 1)
+      gradient(nil, 0.008, '17948d9ecc2.png', ':', 0.98)
       for i=1, 3 do
         removerTextArea(10+i)
       end
