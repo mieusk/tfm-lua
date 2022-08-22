@@ -8,16 +8,9 @@
 -- ideia de um joguinho de celular semelhante a esse
 -- créditos: {
 --    Sklag#2552 pelo script de Degradê,
---    Ninguem#0095 por me deixar roubar o mapa do unotfm,
---    Alguns snippets foram furtados do stackoverflow </3
+--    Ninguem#0095 por me deixar roubar o mapa do unotfm
 --  }
--- 10/08/2022
---[[utilidade: 
-
-ui.addTextArea(id, texto, player, x, y, largura, altura, corFundo, corBorda, binarioOpacidade, binarioPos)
-function eventTextAreaCallback(id, p, name) end
-
-]]
+-- início: 10/08/2022
 
 --declarando as funções globais usadas no script para + otimização
 --coroutines
@@ -29,6 +22,7 @@ local coroutine_yield = coroutine.yield
 local string_sub = string.sub
 local string_len = string.len
 local string_format = string.format
+local string_match = string.match
 
 --tables
 local table_unpack = table.unpack
@@ -37,6 +31,7 @@ local table_insert = table.insert
 --uis
 local ui_addTextArea = ui.addTextArea
 local ui_removeTextArea = ui.removeTextArea
+local ui_setMapName = ui.setMapName
 
 --execs
 local tfm_exec_addImage = tfm.exec.addImage
@@ -76,7 +71,7 @@ local jogadoresGlobais = {['Preuclides#3383'] = 0} --jogadores e seu número de 
 local jogadoresNaSala = {} --lista de jogadores na sala
 
 local jogadoresNoJogo = {} --{nick, papel} lista de jogadores na cadeira
-local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade
+local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade // coloque até 6 papéis, mais do que isso causa problemas
 local jogadoresTotais = 0 --total de jogadores nas cadeiras
 
 --cores usadas no jogo para as textareas
@@ -85,7 +80,7 @@ local coresPadrao = {brancoDeTexto = 'FDFDFE',
     corDeEspaco = 'BABD2F',
     textAreaFundo = '000001',
     textAreaBorda = '554444',
-    espiao = 'FF0C40', --cor vermelho para espião
+    espiao = 'FF0C40',
     sociedade = '10FF54',
     lider = '0950FF',
     missaoNumero = 'FFBF00',
@@ -96,13 +91,16 @@ local coresPadrao = {brancoDeTexto = 'FDFDFE',
 local tempoPercorrido = 0
 
 --elementos da missão
-local liderDaMissao = 'Inconnu#0000' --quem estará escolhendo os agentes
-local liderGenero --nenhum, feminino e masculino
-local missaoSelecionada = 1 --número do título da missão selecionada
-local missaoAtual = 1 --número da missão atual
+local _missaoAtual = 1 --número da missão atual
+local numeroDeMissoes = 5 --número total de missões
+local liderDaMissao = '' --quem estará escolhendo os agentes
+local liderGenero = 0 --nenhum, feminino e masculino
+local missaoSelecionada = 0 --número do título da missão selecionada
 local numeroDeAgentesNaMissao = 0 --quantos agentes terão na missão atual
-local missoesSabotadas = 0 --número de missões sabotadas (se 3, jogo acaba)
-local missoesSucedidas = 0 --numero de missões bem-sucedidas (se 3, jogo acaba)
+local missoesSabotadas = 0 --número de missões sabotadas (o jogo acaba quando atingir o limite)
+local missoesSucedidas = 0 --numero de missões bem-sucedidas (acima ↑)
+local limiteMissoesSabotadas = 3 --se for alterar, coloque um valor menor que o número de missões e maior que 0
+local limiteMissoesSucedidas = 3 -- acima ↑
 
 --agentes da missão atual
 local agentesAtuais = {} --agentes escolhidos para a missão atual
@@ -111,7 +109,7 @@ local sequenciaPossivelDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}, {2, 3, 2, 
 local sequenciaDaPartida = sequenciaPossivelDeAgentes[math_random(#sequenciaPossivelDeAgentes)] --a sequência de agentes na partida atual
 
 --mensagens específicas pra exibir
-local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Em nome do pai.', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Estamos de olho.', 'Você está sendo observado.', 'A sociedade não perdoa.', 'Você está estranhamente de bom humor.', 'Este sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Julgue!', 'Será que é uma boa?'}
+local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Em nome do pai.', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Estamos de olho.', 'Você está sendo observado.', 'A sociedade não perdoa.', 'Você está estranhamente de bom humor.', 'Este sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Julgue!', 'Será que é uma boa?', 'Felicamos com prazer aqueles que nos subjugariam.', 'Não são apenas palavras bonitas.', 'Sic gorgiamus allos subjuntos freira.'}
 local pronomes = {[0] = 'Elu', [1] = 'Ela', [2] = 'Ele'} --mostra elu, ela ou ele nas textareas
 
 --título das missões
@@ -142,66 +140,66 @@ local listaDeMissoes = {
 local listaDeModos = { 
 
   { --pegar as cadeiras 1
-    tipoDoModo = 'cadeira', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = true, --se esse é o modo ativo ou não
-    textAreaDeTempo = 7, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
+    _tipoDoModo = 'cadeira', --o ID do modo
+    _primeiraVez = true, --se é a primeira vez que tá sendo executado
+    _modoAtual = true, --se esse é o modo ativo ou não
+    _textAreaDeTempo = 7, --número da textArea de tempo
+    textAreasDoModo = nil, --número da textArea importante (não é usado realmente, só está aqui por estar)
     duracaoDoModo = 0 --duração do modo
     },
 
   { --parte em que mostra se vc é espião ou sociedade 2
-    tipoDoModo = 'inciar', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 8, --número da textArea de tempo
-    textAreasDoModo = 11, --número da textArea importante
-    duracaoDoModo = 10 --duração do modo
+    _tipoDoModo = 'inciar',
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 8,
+    textAreasDoModo = 11,
+    duracaoDoModo = 10
     },
 
    { --exibição da missão que iniciará 3
-    tipoDoModo = 'exibir', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 8, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 16 --duração do modo
+    _tipoDoModo = 'exibir', 
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 8,
+    textAreasDoModo = nil,
+    duracaoDoModo = 24 --é OBRIGATÓRIO que este seja um número >>>__PAR__<<<, senão quebra
     },
 
   { --seleção de agentes pelo líder 4
-    tipoDoModo = 'selecionar', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 8, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 45 --duração do modo
+    _tipoDoModo = 'selecionar',
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 8,
+    textAreasDoModo = nil,
+    duracaoDoModo = 45
     },
 
   { --aprovação da missão pela população 5
-    tipoDoModo = 'aprovar', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 8, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 0 --duração do modo
+    _tipoDoModo = 'aprovar',
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 8,
+    textAreasDoModo = nil,
+    duracaoDoModo = 0
     },
 
    { --durante a execução da missão 6
-    tipoDoModo = 'agir', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 8, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 0 --duração do modo
+    _tipoDoModo = 'agir',
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 8,
+    textAreasDoModo = nil,
+    duracaoDoModo = 0
     },
 
   { --final de tudo 7
-    tipoDoModo = 'encerrar', --o ID do modo
-    primeiraVez = true, --se é a primeira vez que tá sendo executado
-    modoAtual = false, --se esse é o modo ativo ou não
-    textAreaDeTempo = 9, --número da textArea de tempo
-    textAreasDoModo = nil, --número da textArea importante
-    duracaoDoModo = 0 --duração do modo
+    _tipoDoModo = 'encerrar',
+    _primeiraVez = true,
+    _modoAtual = false,
+    _textAreaDeTempo = 9,
+    textAreasDoModo = nil,
+    duracaoDoModo = 0
     }
 }
 
@@ -229,7 +227,7 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
       {8, '<p align="center"><font size="16" color="#'..coresPadrao.missaoNumero..'">'..numeroExtra-tempoPercorrido, nil, 375, 20, 50, 20, 0x000001, 0x443333, 0.85},
       --9 do modo 'encerrar', mostra "fim de jogo"
       {9, '<p align="center"><font size="16" color="#C2C2DA">Fim de jogo', nil, 375, 20, 50, 20, nil, nil, 0.5},
-      --10 reservado para alguma coisa
+      --10 mensagem de erro quando a coroutine quebra
       {10,'\n\n\n\n\n\n\n\n\n\n<p align="center"><font color="#FFFFFF" size="24" face="lucida console"><b> <font color="#FF0000">[ ERRO ]</font> O jogo quebrou!\nRecarregue o script\nou mude de sala para corrigir.</b>\n\n\n\n<font size="18">Chame no Discord: flamma#0050 caso o erro persista.</font></font>', nil, 0, 0, 800, 400, tonumber('0x'..coresPadrao.brancoMaisEscuro), tonumber('0x'..coresPadrao.brancoMaisEscuro), 0, false},
       --11 do modo 'iniciar', mostra se é espião ou sociedade; do modo 'exibir', mostra a missão e quem está escolhendo a missão
       {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
@@ -289,7 +287,7 @@ local gradient = function(targetPlayer, force, imagem, camada, opacity) --por sk
   local numeroDeImagens = 0
   local imagem = imagem or '17948da3319.png'
   local camada = camada or '!'
-  while opacity > 0 do
+  while opacity > force do
     y = y +1
     opacity = opacity-force
     numeroDeImagens = numeroDeImagens+1
@@ -327,7 +325,7 @@ local analisarJogador = function(nomeDoJogador)
       end
     end
   end
-  if listaDeModos[1].modoAtual then --mostra "faltam x jogadores"
+  if listaDeModos[1]._modoAtual then --mostra "faltam x jogadores"
     carregarTextArea(7, nomeDoJogador)
   end
 end
@@ -354,18 +352,21 @@ end
 local scriptDoGato = coroutine_create(function()
   local degradeParaRemover
   while true do
-    if listaDeModos[1].modoAtual and jogadoresTotais == 6 then --cadeira - pegar as cadeiras
-      listaDeModos[1].modoAtual = false
-      listaDeModos[2].modoAtual = true
+    if listaDeModos[1]._modoAtual and jogadoresTotais == 6 then --cadeira - pegar as cadeiras
+      listaDeModos[1]._modoAtual = false
+      listaDeModos[2]._modoAtual = true
       tempoPercorrido = 0
-      removerTextArea(listaDeModos[1].textAreaDeTempo, nil)
+      removerTextArea(listaDeModos[1]._textAreaDeTempo, nil)
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[2].modoAtual then --iniciar - mostra sociedade ou espião
-      carregarTextArea(listaDeModos[2].textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
-      if listaDeModos[2].primeiraVez then
+    if listaDeModos[2]._modoAtual then --iniciar - mostra sociedade ou espião
+      carregarTextArea(listaDeModos[2]._textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
+      if listaDeModos[2]._primeiraVez then
         degradeParaRemover = gradient(nil, 0.008)
+        for i=1, 1 do
+          carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.lider..'" size="22"><b>&#12288;Você é expectador</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ <font color="#'..coresPadrao.espiao..'">Infiltre</font> e <font color="#'..coresPadrao.espiao..'">sabote</font> 3 missões da <font color="#'..coresPadrao.sociedade..'">sociedade</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Seja discreto: não deixe que a <font color="#'..coresPadrao.sociedade..'">sociedade</font> descubra\n&#12288;&#12288;&#12288;&#12288;sua verdadeira <font color="#'..coresPadrao.espiao..'">identidade</font>;\n\n&#12288;&#12288;&#12288;➜ Tente fazer com que o <font color="#'..coresPadrao.lider..'">Líder</font> da missão escolha você.\n&#12288;&#12288;&#12288;&#12288;Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
+        end
         for i=1, #jogadoresNoJogo do --muda a cor dos espiões para vermelho
         print(jogadoresNoJogo[i][1]..' | '..jogadoresNoJogo[i][2])
           if jogadoresNoJogo[i][2] == 0 then
@@ -375,14 +376,14 @@ local scriptDoGato = coroutine_create(function()
               end
             end --abaixo: mostra a mensagem do espião
               carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.espiao..'" size="22"><b>&#12288;Você é um espião</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ <font color="#'..coresPadrao.espiao..'">Infiltre</font> e <font color="#'..coresPadrao.espiao..'">sabote</font> 3 missões da <font color="#'..coresPadrao.sociedade..'">sociedade</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Seja discreto: não deixe que a <font color="#'..coresPadrao.sociedade..'">sociedade</font> descubra\n&#12288;&#12288;&#12288;&#12288;sua verdadeira <font color="#'..coresPadrao.espiao..'">identidade</font>;\n\n&#12288;&#12288;&#12288;➜ Tente fazer com que o <font color="#'..coresPadrao.lider..'">Líder</font> da missão escolha você.\n&#12288;&#12288;&#12288;&#12288;Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
-            else --mostra a mensagem da sociedade
+            else  --mostra a mensagem da sociedade
               carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.sociedade..'" size="22"><b>&#12288;Você é sociedade</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ Complete <font color="#'..coresPadrao.sociedade..'">3 missões</font> com <font color="#'..coresPadrao.sociedade..'">sucesso</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Fique atento: há <font color="#'..coresPadrao.espiao..'">2 espiões</font> infiltrados na <font color="#'..coresPadrao.sociedade..'">sociedade</font>\n&#12288;&#12288;&#12288;&#12288;que podem sabotar as missões;\n\n&#12288;&#12288;&#12288;➜ Ao ser o <font color="#'..coresPadrao.lider..'">Líder</font> da missão, escolha com sabedoria\n&#12288;&#12288;&#12288;&#12288;seus agentes. Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
           end
         end
-        listaDeModos[2].primeiraVez = false
+        listaDeModos[2]._primeiraVez = false
       end
       if tempoPercorrido == listaDeModos[2].duracaoDoModo then
-        if missaoAtual == 1 or missaoAtual == 5 then
+        if _missaoAtual == 1 or _missaoAtual == 5 then
           missaoSelecionada = math_random(#listaDeMissoes-3)
         else
           missaoSelecionada = math_random(#listaDeMissoes)
@@ -390,8 +391,8 @@ local scriptDoGato = coroutine_create(function()
         liderDaMissao = jogadoresNoJogo[math_random(#jogadoresNoJogo)][1]
         removerTextArea(11, nil)
         tempoPercorrido = 0
-        listaDeModos[2].modoAtual = false
-        listaDeModos[3].modoAtual = true
+        listaDeModos[2]._modoAtual = false
+        listaDeModos[3]._modoAtual = true
         coroutine_yield()
       end
       if tempoPercorrido >= listaDeModos[2].duracaoDoModo+3 then
@@ -400,42 +401,46 @@ local scriptDoGato = coroutine_create(function()
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[3].modoAtual then --exibir - missao atual
-      carregarTextArea(listaDeModos[3].textAreaDeTempo, nil, nil, listaDeModos[3].duracaoDoModo)
-      if listaDeModos[3].primeiraVez then
-        numeroDeAgentesNaMissao = sequenciaDaPartida[missaoAtual]
-        listaDeModos[3].primeiraVez = false
-        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
+    if listaDeModos[3]._modoAtual then --exibir - missao atual
+      carregarTextArea(listaDeModos[3]._textAreaDeTempo, nil, nil, listaDeModos[3].duracaoDoModo)
+      if listaDeModos[3]._primeiraVez then
+        numeroDeAgentesNaMissao = sequenciaDaPartida[_missaoAtual]
+        listaDeModos[3]._primeiraVez = false
+        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(_missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
         carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
-      elseif tempoPercorrido == listaDeModos[3].duracaoDoModo/2-2 then
+      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.4)), '(%d)')-1 then
         removerTextArea(12, nil)
-      elseif tempoPercorrido == (listaDeModos[3].duracaoDoModo/2)-1 then
+      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.4)), '(%d)')-2 then
         liderGenero = tfm.get.room.playerList[liderDaMissao] and tfm.get.room.playerList[liderDaMissao].gender or 0
         carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao..'.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
       elseif tempoPercorrido == listaDeModos[3].duracaoDoModo then
         removerTextArea(11, nil, 13)
         tempoPercorrido = 0
-        listaDeModos[3].modoAtual = false
-        listaDeModos[4].modoAtual = true
+        listaDeModos[3]._modoAtual = false
+        listaDeModos[4]._modoAtual = true
       elseif tempoPercorrido >= listaDeModos[3].duracaoDoModo+3 then
         break
       end
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[4].modoAtual then --selecionar - seleciona os agentes da missão
+    if listaDeModos[4]._modoAtual then --selecionar - seleciona os agentes da missão
+      carregarTextArea(listaDeModos[4]._textAreaDeTempo, nil, nil, listaDeModos[4].duracaoDoModo)
+      if tempoPercorrido >= listaDeModos[2].duracaoDoModo+3 then
+        break
+      end
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[5].modoAtual then
+    if listaDeModos[5]._modoAtual then
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[6].modoAtual then
+    if listaDeModos[6]._modoAtual then
     ------------------------------------------------------------------------------------------
     end
 
-    if listaDeModos[7].modoAtual then
+    if listaDeModos[7]._modoAtual then
     ------------------------------------------------------------------------------------------
     end
 
@@ -472,7 +477,7 @@ end
 local sala = {'Preuclides#3383', 'Sklag#2552', 'Helsey#6880', 'Dankuso12#2879', 'Avuhcie#0000', 'Eletroohause#0000'}
 eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato)
    --padrão: jogadores={{Falado#0000, 0}, [Fulano#0000, 1]}
-  if teclaPressionada == 32 and listaDeModos[1].modoAtual then --cá temos cada textarea das cadeiras, tb coloca os jogadores na tabela {jogadores}
+  if teclaPressionada == 32 and listaDeModos[1]._modoAtual then --cá temos cada textarea das cadeiras, tb coloca os jogadores na tabela {jogadores}
     for i=1, 6 do
       if jogadoresNoJogo[i][1] == nomeDoJogador then return end --quem já tem cadeira não pode pegar outra
       nomeDoJogador = sala[i] --apenas para teste
@@ -487,6 +492,9 @@ end
 
 --mapa
 do
-  local mapaXML = [[<C><P /><Z><S><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="2e2825" H="210" Y="236" T="12" X="400" /><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="0" X="400" c="3" Y="370" T="12" H="60" /><S H="50" L="1600" o="0" X="400" c="3" Y="117" T="12" P="0,0,0.3,0.2,0,0,0,0" /><S H="3000" L="200" o="6a7495" X="900" c="4" N="" Y="646" T="12" P="0,0,0,0.2,0,0,0,0" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="-100" c="4" N="" Y="183" T="12" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="800" o="6a7495" X="400" c="4" N="" Y="-50" T="12" H="100" /><S P="0,0,0,9999,0,0,0,0" L="10" o="324650" H="265" Y="32" T="12" X="900" /><S L="10" o="324650" H="265" X="-100" Y="32" T="12" P="0,0,0,9999,0,0,0,0" /><S P="0,0,0.3,0.2,180,0,0,0" L="3000" o="3488" X="600" c="2" Y="1500" T="12" m="" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="1100" c="4" N="" Y="674" T="12" H="3000" /><S H="3000" L="200" o="6a7495" X="-300" c="4" N="" Y="159" T="12" P="0,0,0,0.2,0,0,0,0" /></S><D><P C="262626,4a2d10" Y="0" T="117" X="0" P="0,0" /><P C="7f7f7f" Y="110" T="96" X="400" P="0,0" /><P X="260" Y="51" T="112" P="0,0" /><P X="0" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="100" /><P X="200" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="300" /><P C="df2d00" Y="116" T="19" X="50" P="0,0" /><P X="400" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="190" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="330" /><P P="0,0" Y="148" T="17" X="500" /><P X="600" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="470" P="0,0" /><P P="0,0" Y="148" T="17" X="700" /><P C="df2d00" Y="116" T="19" P="0,0" X="610" /><P X="800" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="750" /><DS Y="82" X="400" /><P P="0,0" Y="148" T="17" X="-100" /><P P="0,0" Y="148" T="17" X="900" /><P X="661" Y="93" T="55" P="0,0" /></D><O /></Z></C>]]
+  local mapaXML = [[<C><P /><Z><S><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="2e2825" X="400" Y="236" T="12" H="210" /><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="0" X="400" c="3" Y="370" T="12" H="60" /><S H="50" L="1600" o="0" X="400" c="3" Y="117" T="12" P="0,0,0.3,0.2,0,0,0,0" /><S H="3000" L="200" o="6a7495" X="900" c="4" N="" Y="646" T="12" P="0,0,0,0.2,0,0,0,0" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="-100" c="4" N="" Y="183" T="12" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="800" o="6a7495" X="400" c="4" N="" Y="-50" T="12" H="100" /><S P="0,0,0,9999,0,0,0,0" L="10" o="324650" X="900" Y="32" T="12" H="265" /><S L="10" o="324650" X="-100" H="265" Y="32" T="12" P="0,0,0,9999,0,0,0,0" /><S P="0,0,0.3,0.2,180,0,0,0" L="3000" o="3488" X="600" c="2" Y="1500" T="12" m="" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="1100" c="4" N="" Y="674" T="12" H="3000" /><S H="3000" L="200" o="6a7495" X="-300" c="4" N="" Y="159" T="12" P="0,0,0,0.2,0,0,0,0" /></S><D><P C="262626,4a2d10" Y="0" T="117" P="0,0" X="70" /><P C="262626,4a2d10" Y="0" T="117" X="0" P="0,0" /><P C="7f7f7f" Y="110" T="96" X="400" P="0,0" /><P X="260" Y="51" T="112" P="0,0" /><P X="0" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="100" /><P X="200" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="300" /><P C="df2d00" Y="116" T="19" X="50" P="0,0" /><P X="400" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="190" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="330" /><P P="0,0" Y="148" T="17" X="500" /><P X="600" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="470" P="0,0" /><P P="0,0" Y="148" T="17" X="700" /><P C="df2d00" Y="116" T="19" P="0,0" X="610" /><P X="800" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="750" /><DS Y="82" X="400" /><P P="0,0" Y="148" T="17" X="-100" /><P P="0,0" Y="148" T="17" X="900" /><P X="661" Y="93" T="55" P="0,0" /></D><O /></Z></C>]]
   tfm_exec_newGame(mapaXML)
-end
+  ui_setMapName('<font size="13" face="Bookman Old Style">Conspiração >///&lt;</font><font face="verdana">')
+end  
+-------------------------------------------------------------;
+;
