@@ -61,6 +61,9 @@ do local disable = {'AutoShaman', 'AutoNewGame', 'AutoTimeLeft', 'AfkDeath', 'Au
   end
 end
 
+--detalhe: as variáveis que começam com _ (exemplo: _variavel = 1) não devem ser mudadas!
+--todas as outras que não possuem isso podem ser alteradas para personalizar o jogo
+
 --lista de administradores
 local administradores = {['Preuclides#3383'] = true} --se é administrador
 
@@ -71,7 +74,7 @@ local jogadoresGlobais = {['Preuclides#3383'] = 0} --jogadores e seu número de 
 local jogadoresNaSala = {} --lista de jogadores na sala
 
 local jogadoresNoJogo = {} --{nick, papel} lista de jogadores na cadeira
-local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade // coloque até 6 papéis, mais do que isso causa problemas
+local papeisNoJogo = {1, 0, 0, 1, 1, 1} --0 é espião, 1 é sociedade //coloque 6 papéis, mais ou menos do que isso causa problemas
 local jogadoresTotais = 0 --total de jogadores nas cadeiras
 
 --cores usadas no jogo para as textareas
@@ -94,6 +97,7 @@ local tempoPercorrido = 0
 local _missaoAtual = 1 --número da missão atual
 local numeroDeMissoes = 5 --número total de missões
 local liderDaMissao = '' --quem estará escolhendo os agentes
+local numeroEscolhido = 0 --número do primeiro líder da missão
 local liderGenero = 0 --nenhum, feminino e masculino
 local missaoSelecionada = 0 --número do título da missão selecionada
 local numeroDeAgentesNaMissao = 0 --quantos agentes terão na missão atual
@@ -154,7 +158,7 @@ local listaDeModos = {
     _modoAtual = false,
     _textAreaDeTempo = 8,
     textAreasDoModo = 11,
-    duracaoDoModo = 10
+    duracaoDoModo = 2
     },
 
    { --exibição da missão que iniciará 3
@@ -163,7 +167,7 @@ local listaDeModos = {
     _modoAtual = false,
     _textAreaDeTempo = 8,
     textAreasDoModo = nil,
-    duracaoDoModo = 24 --é OBRIGATÓRIO que este seja um número >>>__PAR__<<<, senão quebra
+    duracaoDoModo = 7 --este número precisa de ser maior que ou igual a 7
     },
 
   { --seleção de agentes pelo líder 4
@@ -202,7 +206,8 @@ local listaDeModos = {
     duracaoDoModo = 0
     }
 }
-
+--até aqui você pode editar livremente ↑
+---------------------------------------------------------------------------------------------------
 --ajustando algumas coisas, adiciona index na tabela
 setmetatable(jogadoresNoJogo, {__index = function()
   return {'</b><font size="11">[ espaço ]', 2}
@@ -231,10 +236,12 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
       {10,'\n\n\n\n\n\n\n\n\n\n<p align="center"><font color="#FFFFFF" size="24" face="lucida console"><b> <font color="#FF0000">[ ERRO ]</font> O jogo quebrou!\nRecarregue o script\nou mude de sala para corrigir.</b>\n\n\n\n<font size="18">Chame no Discord: flamma#0050 caso o erro persista.</font></font>', nil, 0, 0, 800, 400, tonumber('0x'..coresPadrao.brancoMaisEscuro), tonumber('0x'..coresPadrao.brancoMaisEscuro), 0, false},
       --11 do modo 'iniciar', mostra se é espião ou sociedade; do modo 'exibir', mostra a missão e quem está escolhendo a missão
       {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
-      --do modo exibir, mostra a descrição da missão
+      --12 do modo exibir, mostra a descrição da missão
       {12, textoAuxiliar, jogadorAlvo, 310, 180, 235, 175, nil, nil, 0, false},
-      --do modo exibir, mostra o líder da missão
-      {13, textoAuxiliar, jogadorAlvo, 180, 190, 440, 175, nil, nil, 0, false}
+      --13 do modo exibir, mostra o líder da missão
+      {13, textoAuxiliar, jogadorAlvo, 180, 190, 440, 175, nil, nil, 0, false},
+      --14-20 do modo selecionar, adiciona uma pessoa na missão
+      {13+numeroExtra, textoAuxiliar, jogadorAlvo, 30+(140*numeroExtra), 120, 60, 20, nil, nil, 1, false}
   })[i]
   end
 end
@@ -351,8 +358,10 @@ end
 --coroutine que será chamada pelo eventLoop
 local scriptDoGato = coroutine_create(function()
   local degradeParaRemover
+  numeroEscolhido = math_random(#jogadoresNoJogo)
   while true do
     if listaDeModos[1]._modoAtual and jogadoresTotais == 6 then --cadeira - pegar as cadeiras
+      sequenciaDaPartida = sequenciaPossivelDeAgentes[math_random(#sequenciaPossivelDeAgentes)]
       listaDeModos[1]._modoAtual = false
       listaDeModos[2]._modoAtual = true
       tempoPercorrido = 0
@@ -388,7 +397,7 @@ local scriptDoGato = coroutine_create(function()
         else
           missaoSelecionada = math_random(#listaDeMissoes)
         end
-        liderDaMissao = jogadoresNoJogo[math_random(#jogadoresNoJogo)][1]
+        liderDaMissao = jogadoresNoJogo[numeroEscolhido][1]
         removerTextArea(11, nil)
         tempoPercorrido = 0
         listaDeModos[2]._modoAtual = false
@@ -408,11 +417,11 @@ local scriptDoGato = coroutine_create(function()
         listaDeModos[3]._primeiraVez = false
         carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(_missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
         carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
-      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.4)), '(%d)')-1 then
+      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.85), '(%d+)'))-1 then
         removerTextArea(12, nil)
-      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.4)), '(%d)')-2 then
+      elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.85), '(%d+)')) then
         liderGenero = tfm.get.room.playerList[liderDaMissao] and tfm.get.room.playerList[liderDaMissao].gender or 0
-        carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao..'.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
+        carregarTextArea(13, nil, '\n<font size="14" color="#'..coresPadrao.lider..'"><b>'..liderDaMissao..'</b></font><font size="13" color="#'..coresPadrao.brancoDeTexto..'"> foi escolhido como líder da missão.\n'..pronomes[liderGenero]..' terá que selecionar '..numeroDeAgentesNaMissao.. ' agentes para completá-la.\n\n\n\n\n\n\n\n<p align="right"><font size="11">'..mensagemAleatoria[math_random(#mensagemAleatoria)]..'</font></p></font>')
       elseif tempoPercorrido == listaDeModos[3].duracaoDoModo then
         removerTextArea(11, nil, 13)
         tempoPercorrido = 0
@@ -426,7 +435,13 @@ local scriptDoGato = coroutine_create(function()
 
     if listaDeModos[4]._modoAtual then --selecionar - seleciona os agentes da missão
       carregarTextArea(listaDeModos[4]._textAreaDeTempo, nil, nil, listaDeModos[4].duracaoDoModo)
-      if tempoPercorrido >= listaDeModos[2].duracaoDoModo+3 then
+      for i=1, #jogadoresNoJogo do
+        if jogadoresNoJogo[i][1] == liderDaMissao then
+        else
+          carregarTextArea(14, nil, 'PÔR', i)
+        end
+      end
+      if tempoPercorrido >= listaDeModos[4].duracaoDoModo+3 then
         break
       end
     ------------------------------------------------------------------------------------------
@@ -494,7 +509,7 @@ end
 do
   local mapaXML = [[<C><P /><Z><S><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="2e2825" X="400" Y="236" T="12" H="210" /><S P="0,0,0.3,0.2,0,0,0,0" L="800" o="0" X="400" c="3" Y="370" T="12" H="60" /><S H="50" L="1600" o="0" X="400" c="3" Y="117" T="12" P="0,0,0.3,0.2,0,0,0,0" /><S H="3000" L="200" o="6a7495" X="900" c="4" N="" Y="646" T="12" P="0,0,0,0.2,0,0,0,0" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="-100" c="4" N="" Y="183" T="12" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="800" o="6a7495" X="400" c="4" N="" Y="-50" T="12" H="100" /><S P="0,0,0,9999,0,0,0,0" L="10" o="324650" X="900" Y="32" T="12" H="265" /><S L="10" o="324650" X="-100" H="265" Y="32" T="12" P="0,0,0,9999,0,0,0,0" /><S P="0,0,0.3,0.2,180,0,0,0" L="3000" o="3488" X="600" c="2" Y="1500" T="12" m="" H="3000" /><S P="0,0,0,0.2,0,0,0,0" L="200" o="6a7495" X="1100" c="4" N="" Y="674" T="12" H="3000" /><S H="3000" L="200" o="6a7495" X="-300" c="4" N="" Y="159" T="12" P="0,0,0,0.2,0,0,0,0" /></S><D><P C="262626,4a2d10" Y="0" T="117" P="0,0" X="70" /><P C="262626,4a2d10" Y="0" T="117" X="0" P="0,0" /><P C="7f7f7f" Y="110" T="96" X="400" P="0,0" /><P X="260" Y="51" T="112" P="0,0" /><P X="0" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="100" /><P X="200" Y="148" T="17" P="0,0" /><P P="0,0" Y="148" T="17" X="300" /><P C="df2d00" Y="116" T="19" X="50" P="0,0" /><P X="400" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="190" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="330" /><P P="0,0" Y="148" T="17" X="500" /><P X="600" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" X="470" P="0,0" /><P P="0,0" Y="148" T="17" X="700" /><P C="df2d00" Y="116" T="19" P="0,0" X="610" /><P X="800" Y="148" T="17" P="0,0" /><P C="df2d00" Y="116" T="19" P="0,0" X="750" /><DS Y="82" X="400" /><P P="0,0" Y="148" T="17" X="-100" /><P P="0,0" Y="148" T="17" X="900" /><P X="661" Y="93" T="55" P="0,0" /></D><O /></Z></C>]]
   tfm_exec_newGame(mapaXML)
-  ui_setMapName('<font size="13" face="Bookman Old Style">Conspiração >///&lt;</font><font face="verdana">')
+  ui_setMapName('<font face="Bookman Old Style">Conspiração >///&lt;</font><font face="verdana">')
 end  
 -------------------------------------------------------------;
 ;
