@@ -45,14 +45,12 @@ local math_random = math.random
 local math_randomseed = math.randomseed
 local os_time = os.time
 local system_bindKeyboard = system.bindKeyboard
---não coloquei o tfm.get.room.playerList pois este é uma table e não uma função
 --ps: é desnecessário adicionar funções globais que só usamos poucas vezes nesta lista
 --isso só é útil qnd ela é usada 200 ou + vezes no script
 --então as variáveis acima n tem necessidade, coloquei inutilmente mesmo (exceto o addImage e removeImage q uso milhares de vezes)
 
---randomização desnecessariamente grande, mas fazer o que se o resultado assim é melhor...
-math_randomseed(math_random(os_time()+math_random()^286637850%64666/math_random()^math_random(os_time(), os_time()+1099511627776)*math_random(32, 64), 60525076796/478324)+1000000000)
-
+--randomização
+math_randomseed((math_random()*os_time()*math_random()^math_random()^os_time()%math_random())*os_time())
 
 --desativa shaman, inicio de jogo, tempo, morte automática e ponto automático
 do local disable = {'AutoShaman', 'AutoNewGame', 'AutoTimeLeft', 'AfkDeath', 'AutoScore'}
@@ -86,9 +84,19 @@ local coresPadrao = {brancoDeTexto = 'FDFDFE',
     espiao = 'FF0C40',
     sociedade = '10FF54',
     lider = '0950FF',
+    espiaoEscolhido = 'FF6B00',
     missaoNumero = 'FFBF00',
     missaoEspecialTitulo = 'FFAAFF',
-    missaoEspecial = 'ED67EA'}
+    missaoEspecial = 'ED67EA',
+    colocarLider = '0730CC',
+    colocarPadrao = 'CC0A00',
+    colocarCinza = '6A5F71',
+    colocarCheio = 'AAAABC',
+    _colocar = ':)'
+  }
+
+local textoColorido = {}
+local corColorida = {coresPadrao.espiao, coresPadrao.missaoNumero, coresPadrao.lider}
 
 --tempo total percorrido no modo
 local tempoPercorrido = 0
@@ -107,27 +115,31 @@ local limiteMissoesSabotadas = 3 --se for alterar, coloque um valor menor que o 
 local limiteMissoesSucedidas = 3 -- acima ↑
 
 --agentes da missão atual
-local agentesAtuais = {} --agentes escolhidos para a missão atual
+local agentesAtuais = {'', '', '', '', '', ''} --agentes escolhidos para a missão atual
 local agentesForamAprovados = false --se agentes foram aprovados
 local sequenciaPossivelDeAgentes = {{2, 3, 2, 2, 3}, {2, 2, 2, 3, 3}, {2, 3, 2, 3, 2}} --sequência de número de agente nas missões
 local sequenciaDaPartida = sequenciaPossivelDeAgentes[math_random(#sequenciaPossivelDeAgentes)] --a sequência de agentes na partida atual
 
 --mensagens específicas pra exibir
-local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Em nome do pai.', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Estamos de olho.', 'Você está sendo observado.', 'A sociedade não perdoa.', 'Você está estranhamente de bom humor.', 'Este sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Julgue!', 'Será que é uma boa?', 'Felicamos com prazer aqueles que nos subjugariam.', 'Não são apenas palavras bonitas.', 'Sic gorgiamus allos subjuntos freira.'}
+local mensagemAleatoria = {'Allah te guiará nessa.', 'Adeus, Buda.', 'Seu objetivo está tão perto.', 'Seja compassivo.', 'AAAAAA ele me arranhou.', 'Disseram-me "0 é a cor do azar".', 'Obliviscitur tenebris.', 'Ac tenebras.', 'Invenire astrologus.', 'Memento mori.', 'Et non moriatur.', 'Não esqueça ao que você está aqui.', 'Maloso vobiscum et cum spiritum.', 'Anseio por paz em meu coração.', 'Você entendeu algo?', 'Os olhos da sociedade está em você.', 'Este sujeito está estranhamente de bom humor.', 'Este sorriso é suspeito.', 'Tem algo em mente?', 'Temos olhos nas paredes...', 'É você?', 'Como você sabia?', 'Mi vitae, felis, bibendum.', 'Maior sum quam liber tuus.', 'Não acredite nisso.', 'Será que é uma boa?', 'Felicamos com prazer aqueles que nos subjugariam.', 'Não são apenas palavras bonitas.', 'Sic gorgiamus allos subjuntos freira.'}
 local pronomes = {[0] = 'Elu', [1] = 'Ela', [2] = 'Ele'} --mostra elu, ela ou ele nas textareas
 
 --título das missões
-local listaDeMissoes = {
+local listaDeMissoes = function(numeroExtra) 
+  if numeroExtra == nil then
+    return 16
+  end
+  return({
     --1-3
-    {'Achatar a Terra', 'Que a Terra é plana todo o globo sabe. Mas a sociedade viu o capitão do exército americano comentando sobre a contrução de equipamentos de terraformação para curvar a Terra localizados no parque de Tallahassee. Sugeriu-se que '..numeroDeAgentesNaMissao..' agentes da sociedade viajassem para os parques da cidade, onde o congressista Manchuriano e os agentes, acompanhados por quatro carros de palhaços chamando a atenção do público, destruiriam a máquina e achataria a Terra novamente.'}, 
-    {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental das micro-ondas, a fábrica de chapéus alumínio inspirou-se em folhas de duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
+    {'Achatar a Terra', 'Que a Terra é plana todo o globo sabe. Os dias estão contados, a sociedade viu o capitão do exército americano comentando sobre a contrução de equipamentos de terraformação para curvar a Terra, localizados no parque de Tallahassee. Sugeriu-se que '..numeroDeAgentesNaMissao..' agentes da sociedade viajassem para os parques da cidade, onde o congressista Manchuriano e os agentes, acompanhados por quatro carros de palhaços chamando a atenção do público, destruiriam a máquina e achataria a Terra novamente.'}, 
+    {'Fazer chapéus de alumínio', 'Abstendo-se ao manejo mental das micro-ondas, a fábrica de chapéus alumínio construiu chapéus em folhas de duas camadas, quatro camadas se separadas umas das outras. A ponta encolhe e, portanto, torna-se cada vez mais pequena. Guarde para você. Mantenha-o fresco. Imite em um. A repetição é um programa de aula gratuito. Respiração profunda. Você dá os sinais de porta logo após dar as instruções. Defina os controles no modo de alto impacto para que apenas os membros da sociedade protejam-se do controle mental.'}, 
     {'Gravar pouso falso na Lua', 'A diretora da sociedade manda uma carta: "Cara sociedade, uma nave espacial apareceu em Hollywood onde o menino está e começou a filmá-lo pulando. Dentro do navio está o capitão do exército japonês com máscara de macaco, pedindo pela entrega do material do pouso lunar falso. Sombras apareceram me chamando para a gravação lunar. Livre como macaco, haha. Quero que vocês lidem com isto. Atenciosamente, Diretora Hello Kitty". O membro '..liderDaMissao..' vai nos liderar nessa.'}, 
     --4-6
     {'Visitar família da Elizabeth II', 'Uma carta escrita em nome da reptiliana Elizabeth II para um de seus favoritos marítimos contava sobre o desejo dos répteis em aliar-se à nossa sociedade. A britânica Elizabeth II provou ser uma marca igualmente evocativa de monarca, e não um gosto resistente ao ridículo. À medida que o país se apressava de contar séculos de sagas e dinastias, Elizabeth II, a imortal, retratou os leitores com o registro de suas aventuras nos pântamos. Devemos visitar o pântano secreto da rainha para firmar a aliança.'}, 
     {'Achar filhos do Conde Drácula', 'O gato sugeriu fincar uma estaca no coração do vampiro para que ele se dissipe e sejamos mais fortes. Ah! Bobeira... Nadaremos em ouro com a aliança dos vampiros. Justiça, Romênia, preferência. Desde quando você quer justiça para os cristãos? Peter (memória falsa) sugeriu que um vampiro de aparência humana se tornasse humano (ah hah, perfeito porque essa pessoa provavelmente ficaria melhor). O gato lamentavelmente esfaqueou o vampiro romeniano e rasgou sua linda lingerie.'}, 
     {'Começar um desastre "natural"', 'O cientista Peter, assistente na base de aquecimento da ionosfera, olha para Mara Chung, agarra seu namorado Marco em algum lugar na multidão, entra no corredor e bate a porta do centro de pesquisa. Ele concluiu seu pensamento: Este monte de fracotes não percebe o que nós representamos. Histeria em massa. Moeda de piada para as autoridades da cidade da próxima semana. Aqueça a ionosfera na temperatura máxima com a ajuda de '..numeroDeAgentesNaMissao..' agentes para destruir este lugar.'}, 
     --7-9
-    {'Inspec. bunker apocalíptico', 'Na Groenlândia comemos peixes capturados há apenas alguns meses, os ursos nos trazem comida depois de procurar mísseis nucleares no subsolo, há um enorme bunker, seu verde reluzente na neve, absorvedores de eco varreram a escuridão, usamos luvas brancas aqui, alguns pequenos manequins sendo substituídos, um soldado avança, Pelé voa como um velho urso polar, somos solenes, elogios para o diretor angolano David do bunker. Pede para inspecionar.'}, 
+    {'Inspec. bunker apocalíptico', 'Na Groenlândia comemos peixes capturados há apenas alguns meses, os ursos nos trazem comida depois de procurar mísseis nucleares no subsolo, há um enorme bunker, seu verde reluzente na neve, absorvedores de eco varreram a escuridão, usamos luvas brancas aqui, alguns pequenos manequins sendo substituídos, um soldado avança, Pelé voa como um velho urso polar, somos solenes, elogios para o diretor angolano David do bunker. Pede-nos para inspecionar.'}, 
     {'Quebrar mercado de ações', 'Propomos a queda de 99% de todas as ações, reduzindo o valor das ações para o valor básico até que a reconstrução possa começar. Em última análise, as ações voltarão como sangue nas veias. A era da oferta e da demanda se aproxima. Somente a natureza fornece mensagens dessa urgência. O dinheiro se torna primitivo, perverso, cru e apaixonado ao longo de décadas. Maluco acima. Digno de rancor abaixo. São '..numeroDeAgentesNaMissao..' agentes que derrubarão as ações e acabarão com o dinheiro desprezível que controla nossas vidas.'}, 
     {'Sabotar alianças internacionais', 'A Santíssima Trindade que une os países deve ser derrubada. Manipularemos o governo japonês para atacar ativistas japoneses. Manifestantes não conseguem silenciar os defensores do sistema. A cobra da sociedade envenenará aqueles que se oporem a ela. A ação das forças sombrias de Roma, assustando as feministas, conspira por motivos ecniilistas legítimos contra fatos políticos. Os opressores chineses globais dizem "adeus Buda". Somento a sociedade pode apagar as uniões globais.'}, 
     --10-12
@@ -137,8 +149,11 @@ local listaDeMissoes = {
     --13-15
     {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Prever o futuro com tarot</b></font>', '\n\n<font size="12">Parece que essa <font color="#'..coresPadrao.missaoEspecial..'"><b>missão</b></font> é <font color="#'..coresPadrao.missaoEspecial..'"><b>especial</b></font>. Madame Lulu joga suas cartas na mesa: duas letras que existem no nome de um dos espiões são reveladas. Apenas os agentes da missão veem as letras. Este futuro será profíquo?'}, 
     {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Conversar com a Bruxa Branca</b></font>', '\n\n<font size="12"><font color="#'..coresPadrao.missaoEspecial..'"><b>Missão especial</b></font> da sede da sociedade secreta! Encontre a Bruxa Branca, ela desfrutará seus poderes absolutos para te metamorfosear em sociedade ou espião, de acordo com seus desejos. Só um agente da missão pode se comunicar com ela.'}, 
-    {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Conversar com a Bruxa Negra</b></font>', '\n\n<font size="12">Anormalidade: <font color="#'..coresPadrao.missaoEspecial..'"><b>missão especial</b></font>. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja bem-sucedida ou sabotada de modo automático, sem importar quais são os agentes da missão. Só um agente pode conversar com a Bruxa Negra.'}
-  }
+    {'<font color="#'..coresPadrao.missaoEspecialTitulo..'"><b>Conversar com a Bruxa Negra</b></font>', '\n\n<font size="12">Anormalidade: <font color="#'..coresPadrao.missaoEspecial..'"><b>missão especial</b></font>. A Bruxa Negra jogará uma praga na Missão #5, fazendo com que ela seja bem-sucedida ou sabotada de modo automático, sem importar quais são os agentes da missão. Só um agente pode conversar com a Bruxa Negra.'},
+    --16
+    {string.format('<font color="#%s"><b>Contatar espião soviético</b></font>', coresPadrao.missaoEspecialTitulo), string.format('\n\n<font size="12">Uma <font color="#%s"><b>missão especial</b></font> selvagem apareceu: Reintegração. Não temos contato no Vietnã. Nosso detetive eslavo desvendará o disfarce inimigo, seu assistente mandará um telégrafo para nossa base. Cremos que %s agentes serão escolhidos para interpretar a mensagem. Onde fica o Vietnã?', coresPadrao.missaoEspecial, numeroDeAgentesNaMissao)}
+  })[numeroExtra]
+end
 
 --modos e suas propriedades
 local listaDeModos = { 
@@ -176,7 +191,7 @@ local listaDeModos = {
     _modoAtual = false,
     _textAreaDeTempo = 8,
     textAreasDoModo = nil,
-    duracaoDoModo = 45
+    duracaoDoModo = 999
     },
 
   { --aprovação da missão pela população 5
@@ -185,7 +200,7 @@ local listaDeModos = {
     _modoAtual = false,
     _textAreaDeTempo = 8,
     textAreasDoModo = nil,
-    duracaoDoModo = 0
+    duracaoDoModo = 30
     },
 
    { --durante a execução da missão 6
@@ -220,12 +235,12 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
   for i=numeroDaTextArea, numeroDaTextArea do
     return ({
       --1-6 - lista de cadeiras
-      {1, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[1][1], jogadorAlvo, 000, 100, 100, 20, nil, nil, 0, false},
-      {2, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[2][1], jogadorAlvo, 130, 100, 120, 20, nil, nil, 0, false},
-      {3, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[3][1], jogadorAlvo, 270, 100, 120, 20, nil, nil, 0, false},
-      {4, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[4][1], jogadorAlvo, 410, 100, 120, 20, nil, nil, 0, false},
-      {5, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[5][1], jogadorAlvo, 550, 100, 120, 20, nil, nil, 0, false},
-      {6, "<p align='center'><font size='10' color='#"..textoAuxiliar.."'><b>"..jogadoresNoJogo[6][1], jogadorAlvo, 700, 100, 100, 20, nil, nil, 0, false},
+      {1, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[1][1], jogadorAlvo, 000, 100, 100, 20, nil, nil, 0, false},
+      {2, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[2][1], jogadorAlvo, 130, 100, 120, 20, nil, nil, 0, false},
+      {3, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[3][1], jogadorAlvo, 270, 100, 120, 20, nil, nil, 0, false},
+      {4, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[4][1], jogadorAlvo, 410, 100, 120, 20, nil, nil, 0, false},
+      {5, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[5][1], jogadorAlvo, 550, 100, 120, 20, nil, nil, 0, false},
+      {6, "<p align='center'><font size='10'><b><font color='#"..textoAuxiliar.."'>"..jogadoresNoJogo[6][1], jogadorAlvo, 700, 100, 100, 20, nil, nil, 0, false},
       --7 - do modo 'cadeira', text areas de jogadores que faltam
       {7, '<p align="center"><font size="12" color="#'..coresPadrao.brancoMaisEscuro..'">Faltam <font size="12" color="#'..coresPadrao.missaoNumero..'">'..6-jogadoresTotais..'</font> jogadores</font></p>', nil, 320, 20, 160, 25, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.85},
       --8 - contagem de tempo na maioria do listaDeModos
@@ -235,13 +250,16 @@ local textAreas = function(numeroDaTextArea, jogadorAlvo, textoAuxiliar, numeroE
       --10 mensagem de erro quando a coroutine quebra
       {10,'\n\n\n\n\n\n\n\n\n\n<p align="center"><font color="#FFFFFF" size="24" face="lucida console"><b> <font color="#FF0000">[ ERRO ]</font> O jogo quebrou!\nRecarregue o script\nou mude de sala para corrigir.</b>\n\n\n\n<font size="18">Chame no Discord: flamma#0050 caso o erro persista.</font></font>', nil, 0, 0, 800, 400, tonumber('0x'..coresPadrao.brancoMaisEscuro), tonumber('0x'..coresPadrao.brancoMaisEscuro), 0, false},
       --11 do modo 'iniciar', mostra se é espião ou sociedade; do modo 'exibir', mostra a missão e quem está escolhendo a missão
+      --do modo 'aprovar', mostra se pode ser aprovado
       {11, textoAuxiliar, jogadorAlvo, 160, 125, 480, 240, tonumber('0x'..coresPadrao.textAreaFundo), tonumber('0x'..coresPadrao.textAreaBorda), 0.94, false},
       --12 do modo exibir, mostra a descrição da missão
       {12, textoAuxiliar, jogadorAlvo, 310, 180, 235, 175, nil, nil, 0, false},
       --13 do modo exibir, mostra o líder da missão
       {13, textoAuxiliar, jogadorAlvo, 180, 190, 440, 175, nil, nil, 0, false},
       --14-20 do modo selecionar, adiciona uma pessoa na missão
-      {13+numeroExtra, textoAuxiliar, jogadorAlvo, 30+(140*numeroExtra), 120, 60, 20, nil, nil, 1, false}
+      {13+numeroExtra, textoAuxiliar, jogadorAlvo, (140*numeroExtra)+28-140, 120, 45, 18, tonumber('0x'..coresPadrao._colocar), nil, 1, false},
+      {21, 'Aprovar', jogadorAlvo}, --terminar
+      {22, 'Sabotar', jogadorAlvo}
   })[i]
   end
 end
@@ -284,7 +302,7 @@ end
 
 local tablelength = function(T) --contar o número de elementos na tabela
   local count = 0
-  for _ in next, T do count = count + 1 end
+  for _ in next, T do if T[_] ~= '' then count = count + 1 end end
   return count
 end
 
@@ -339,7 +357,7 @@ end
 
 local removerDegrade = function(imagensParaRemover)
   for i=1, imagensParaRemover do
-    tfm_exec_removeImage(i)
+    tfm_exec_removeImage(i-1)
   end
 end
 
@@ -358,11 +376,10 @@ end
 --coroutine que será chamada pelo eventLoop
 local scriptDoGato = coroutine_create(function()
   local degradeParaRemover
-  numeroEscolhido = math_random(#jogadoresNoJogo)
   while true do
     if listaDeModos[1]._modoAtual and jogadoresTotais == 6 then --cadeira - pegar as cadeiras
       sequenciaDaPartida = sequenciaPossivelDeAgentes[math_random(#sequenciaPossivelDeAgentes)]
-      listaDeModos[1]._modoAtual = false
+      listaDeModos[1]._modoAtual = false --começa o modo iniciar quando as cadeiras são preenchidas
       listaDeModos[2]._modoAtual = true
       tempoPercorrido = 0
       removerTextArea(listaDeModos[1]._textAreaDeTempo, nil)
@@ -372,6 +389,7 @@ local scriptDoGato = coroutine_create(function()
     if listaDeModos[2]._modoAtual then --iniciar - mostra sociedade ou espião
       carregarTextArea(listaDeModos[2]._textAreaDeTempo, nil, nil, listaDeModos[2].duracaoDoModo) --contagem do tempo
       if listaDeModos[2]._primeiraVez then
+        numeroEscolhido = 1--math_random(#jogadoresNoJogo) --escolhe o líder aleatóraimente
         degradeParaRemover = gradient(nil, 0.008)
         for i=1, 1 do
           carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.lider..'" size="22"><b>&#12288;Você é expectador</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ <font color="#'..coresPadrao.espiao..'">Infiltre</font> e <font color="#'..coresPadrao.espiao..'">sabote</font> 3 missões da <font color="#'..coresPadrao.sociedade..'">sociedade</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Seja discreto: não deixe que a <font color="#'..coresPadrao.sociedade..'">sociedade</font> descubra\n&#12288;&#12288;&#12288;&#12288;sua verdadeira <font color="#'..coresPadrao.espiao..'">identidade</font>;\n\n&#12288;&#12288;&#12288;➜ Tente fazer com que o <font color="#'..coresPadrao.lider..'">Líder</font> da missão escolha você.\n&#12288;&#12288;&#12288;&#12288;Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
@@ -384,18 +402,18 @@ local scriptDoGato = coroutine_create(function()
                 carregarTextArea(i, jogadoresNoJogo[j][1], coresPadrao.espiao)
               end
             end --abaixo: mostra a mensagem do espião
-              carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.espiao..'" size="22"><b>&#12288;Você é um espião</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ <font color="#'..coresPadrao.espiao..'">Infiltre</font> e <font color="#'..coresPadrao.espiao..'">sabote</font> 3 missões da <font color="#'..coresPadrao.sociedade..'">sociedade</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Seja discreto: não deixe que a <font color="#'..coresPadrao.sociedade..'">sociedade</font> descubra\n&#12288;&#12288;&#12288;&#12288;sua verdadeira <font color="#'..coresPadrao.espiao..'">identidade</font>;\n\n&#12288;&#12288;&#12288;➜ Tente fazer com que o <font color="#'..coresPadrao.lider..'">Líder</font> da missão escolha você.\n&#12288;&#12288;&#12288;&#12288;Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
-            else  --mostra a mensagem da sociedade
-              carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.sociedade..'" size="22"><b>&#12288;Você é sociedade</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ Complete <font color="#'..coresPadrao.sociedade..'">3 missões</font> com <font color="#'..coresPadrao.sociedade..'">sucesso</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Fique atento: há <font color="#'..coresPadrao.espiao..'">2 espiões</font> infiltrados na <font color="#'..coresPadrao.sociedade..'">sociedade</font>\n&#12288;&#12288;&#12288;&#12288;que podem sabotar as missões;\n\n&#12288;&#12288;&#12288;➜ Ao ser o <font color="#'..coresPadrao.lider..'">Líder</font> da missão, escolha com sabedoria\n&#12288;&#12288;&#12288;&#12288;seus agentes. Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
+            carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.espiao..'" size="22"><b>&#12288;Você é um espião</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ <font color="#'..coresPadrao.espiao..'">Infiltre</font> e <font color="#'..coresPadrao.espiao..'">sabote</font> 3 missões da <font color="#'..coresPadrao.sociedade..'">sociedade</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Seja discreto: não deixe que a <font color="#'..coresPadrao.sociedade..'">sociedade</font> descubra\n&#12288;&#12288;&#12288;&#12288;sua verdadeira <font color="#'..coresPadrao.espiao..'">identidade</font>;\n\n&#12288;&#12288;&#12288;➜ Tente fazer com que o <font color="#'..coresPadrao.lider..'">Líder</font> da missão escolha você.\n&#12288;&#12288;&#12288;&#12288;Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
+          else --mostra a mensagem da sociedade
+            carregarTextArea(11, jogadoresNoJogo[i][1], '<font color="#'..coresPadrao.sociedade..'" size="22"><b>&#12288;Você é sociedade</b></font>\n\n\n<font size="14" color="#'..coresPadrao.brancoDeTexto..'">&#12288;&#12288;&#12288;➜ Complete <font color="#'..coresPadrao.sociedade..'">3 missões</font> com <font color="#'..coresPadrao.sociedade..'">sucesso</font> para vencer;\n\n&#12288;&#12288;&#12288;➜ Fique atento: há <font color="#'..coresPadrao.espiao..'">2 espiões</font> infiltrados na <font color="#'..coresPadrao.sociedade..'">sociedade</font>\n&#12288;&#12288;&#12288;&#12288;que podem sabotar as missões;\n\n&#12288;&#12288;&#12288;➜ Ao ser o <font color="#'..coresPadrao.lider..'">Líder</font> da missão, escolha com sabedoria\n&#12288;&#12288;&#12288;&#12288;seus agentes. Um <font color="#'..coresPadrao.espiao..'">espião</font> pode sabotar a missão inteira.</font>')
           end
         end
         listaDeModos[2]._primeiraVez = false
       end
       if tempoPercorrido == listaDeModos[2].duracaoDoModo then
         if _missaoAtual == 1 or _missaoAtual == 5 then
-          missaoSelecionada = math_random(#listaDeMissoes-3)
+          missaoSelecionada = math_random(listaDeMissoes()-4)
         else
-          missaoSelecionada = math_random(#listaDeMissoes)
+          missaoSelecionada = math_random(listaDeMissoes())
         end
         liderDaMissao = jogadoresNoJogo[numeroEscolhido][1]
         removerTextArea(11, nil)
@@ -415,8 +433,8 @@ local scriptDoGato = coroutine_create(function()
       if listaDeModos[3]._primeiraVez then
         numeroDeAgentesNaMissao = sequenciaDaPartida[_missaoAtual]
         listaDeModos[3]._primeiraVez = false
-        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(_missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes[missaoSelecionada][1]..'</b></font>')
-        carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes[missaoSelecionada][2]..'</font></p>')
+        carregarTextArea(11, nil, '<font size="16" color="#'..coresPadrao.missaoNumero..'"><b>&#12288;&#12288;Missão #'..tostring(_missaoAtual)..'</b></font>\n<font size="22" color="#'..coresPadrao.brancoDeTexto..'"><b>&#12288;&#12288;&#12288; <font size="16" color="#'..coresPadrao.missaoNumero..'"><b>└ </b></font>'..listaDeMissoes(missaoSelecionada)[1]..'</b></font>')
+        carregarTextArea(12, nil, '<p align="justify"><font size="10" color="#'..coresPadrao.brancoMaisEscuro..'">'..listaDeMissoes(missaoSelecionada)[2]..'</font></p>')
       elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.85), '(%d+)'))-1 then
         removerTextArea(12, nil)
       elseif tempoPercorrido == tonumber(string_match(tostring(listaDeModos[3].duracaoDoModo*0.85), '(%d+)')) then
@@ -435,11 +453,34 @@ local scriptDoGato = coroutine_create(function()
 
     if listaDeModos[4]._modoAtual then --selecionar - seleciona os agentes da missão
       carregarTextArea(listaDeModos[4]._textAreaDeTempo, nil, nil, listaDeModos[4].duracaoDoModo)
-      for i=1, #jogadoresNoJogo do
-        if jogadoresNoJogo[i][1] == liderDaMissao then
-        else
-          carregarTextArea(14, nil, 'PÔR', i)
+      if listaDeModos[4]._primeiraVez then
+        listaDeModos[4]._primeiraVez = false
+        for i=1, #jogadoresNoJogo do
+          if jogadoresNoJogo[i][1] == liderDaMissao then
+            coresPadrao._colocar = coresPadrao.colocarLider
+            agentesAtuais[i] = liderDaMissao
+            if jogadoresNoJogo[i][2] == 0 then
+              carregarTextArea(i, nil, coresPadrao.lider)
+            else
+              carregarTextArea(i, nil, coresPadrao.lider)
+            end
+            carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="10">Líder</font></b></p>', coresPadrao.brancoDeTexto), i)
+          else
+            coresPadrao._colocar = coresPadrao.colocarPadrao
+            carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="9"><a href="event:selecionar">Selectio</a></font></b></p>', coresPadrao.brancoDeTexto), i)
+          end
         end
+      end
+      if tempoPercorrido == listaDeModos[4].duracaoDoModo then
+        for i=1, #jogadoresNoJogo do
+          if i == numeroEscolhido then
+          else
+            removerTextArea(13+i, nil)
+          end
+        end
+        listaDeModos[4]._modoAtual = false
+        listaDeModos[5]._modoAtual = true
+        tempoPercorrido = 0
       end
       if tempoPercorrido >= listaDeModos[4].duracaoDoModo+3 then
         break
@@ -448,6 +489,8 @@ local scriptDoGato = coroutine_create(function()
     end
 
     if listaDeModos[5]._modoAtual then
+      carregarTextArea(listaDeModos[5]._textAreaDeTempo, nil, nil, listaDeModos[5].duracaoDoModo)
+      carregarTextArea()
     ------------------------------------------------------------------------------------------
     end
 
@@ -489,7 +532,57 @@ eventNewPlayer = function(jogadorQueEntrou)
   analisarJogador(jogadorQueEntrou) --novo player = dá oq é necessário p ele
 end
 
-local sala = {'Preuclides#3383', 'Sklag#2552', 'Helsey#6880', 'Dankuso12#2879', 'Avuhcie#0000', 'Eletroohause#0000'}
+eventTextAreaCallback = function(numeroDaTextArea, quemClicou, nomeDoEvento)
+  if numeroDaTextArea > 13 and quemClicou == 'Preuclides#3383' and nomeDoEvento == 'selecionar' then
+    coresPadrao._colocar = coresPadrao.colocarCinza
+    carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="9"><a href="event:remover">Tirare</a></font></b></p>', coresPadrao.brancoDeTexto), numeroDaTextArea-13)
+    if jogadoresNoJogo[numeroEscolhido][2] == 0 and jogadoresNoJogo[numeroDaTextArea-13][2] == 0 then
+      local escolheCor = 1
+      for i=1, string_len(jogadoresNoJogo[numeroDaTextArea-13][1]) do
+        textoColorido[#textoColorido+1] = corColorida[escolheCor].."'>"..string_sub(jogadoresNoJogo[numeroDaTextArea-13][1], i, i).."<font color='#"
+        if escolheCor == 2 then
+          escolheCor = 1
+        else
+          escolheCor = 2
+        end
+        if i == string_len(jogadoresNoJogo[numeroDaTextArea-13][1]) then
+          textoColorido[#textoColorido+1] = "'>\n\n\n\n\n\n"
+        end
+      end
+      carregarTextArea(numeroDaTextArea-13, nil, table.concat(textoColorido))
+      textoColorido = {}
+    else
+      carregarTextArea(numeroDaTextArea-13, nil, coresPadrao.missaoNumero)
+    end
+    agentesAtuais[numeroDaTextArea-13] = jogadoresNoJogo[numeroDaTextArea-13][1]
+    if tablelength(agentesAtuais) > numeroDeAgentesNaMissao then
+      for k, v in next, agentesAtuais do
+        if v == ''  then
+          coresPadrao._colocar = coresPadrao.colocarCheio
+          carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="9">\\\\\\</font></b></p>', coresPadrao.lider), tonumber(k))
+        end
+      end
+    end
+  end
+  if numeroDaTextArea > 13 and quemClicou == 'Preuclides#3383' and nomeDoEvento == 'remover' then
+    coresPadrao._colocar = coresPadrao.colocarPadrao
+    carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="9"><a href="event:selecionar">Selectio</a></font></b></p>', coresPadrao.brancoDeTexto), numeroDaTextArea-13)
+    if jogadoresNoJogo[numeroEscolhido][2] == 0 and jogadoresNoJogo[numeroDaTextArea-13][2] == 0 then
+      carregarTextArea(numeroDaTextArea-13, nil, coresPadrao.espiao)
+    else
+      carregarTextArea(numeroDaTextArea-13, nil, coresPadrao.brancoDeTexto)
+    end
+    agentesAtuais[numeroDaTextArea-13] = ''
+    for k, v in next, agentesAtuais do
+      if v == '' then
+        coresPadrao._colocar = coresPadrao.colocarPadrao
+        carregarTextArea(14, nil, string.format('<p align="center"><b><font color="#%s" size="9"><a href="event:selecionar">Selectio</a></font></b></p>', coresPadrao.brancoDeTexto), tonumber(k))
+      end
+    end
+  end
+end
+
+local sala = {'Sklag#2552', 'Preuclides#3383', 'Helsey#6880', 'Dankuso12#2879', 'Avuhcie#0000', 'End_daaark#4736'}
 eventKeyboard = function(nomeDoJogador, teclaPressionada, _, posicaoXDoRato)
    --padrão: jogadores={{Falado#0000, 0}, [Fulano#0000, 1]}
   if teclaPressionada == 32 and listaDeModos[1]._modoAtual then --cá temos cada textarea das cadeiras, tb coloca os jogadores na tabela {jogadores}
