@@ -1,4 +1,4 @@
-# tfm-lua
+# b_transformiceMinijogos
 
 
 Alguns pouquíssimos scripts para o transformice que já produzi.
