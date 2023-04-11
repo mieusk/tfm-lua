@@ -312,6 +312,7 @@ do
 			tfm.exec.removeImage(imageDaConfiguracao)
 			removerTextArea(8, nil, 9, 10, 11, 12, 13)
 			comunidade = 'br'
+			ui.setMapName(lingua[comunidade][26]:format(ganhadoresNumero))
 			for k in next, tfm.get.room.playerList do
 				eventNewPlayer(k)
 			end
