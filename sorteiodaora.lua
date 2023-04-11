@@ -2,7 +2,7 @@
 ---@descrição script de sorteio
 ---@créditos Ninguem#0095 pela versão anterior e pela função nineSlicedRect
 
-local comunidade = 'br' --put "en" if you speak english to start with english (you can change later in-game)
+local comunidade = 'br' --put "en" if you speak english to start with english (you can change it later in-game)
 
 --otimizações
 local tfm, ui, coroutine, string, table, math = tfm, ui, coroutine, string, table, math
