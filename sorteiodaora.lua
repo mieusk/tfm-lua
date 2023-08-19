@@ -2,7 +2,7 @@
 ---@descrição script de sorteio
 ---@créditos Ninguem#0095 pela versão anterior e pela função nineSlicedRect
 
-local comunidade = 'br' --put "en" if you speak english to start with english (you can change it later in-game)
+local comunidade = 'br' --put "en" if you speak english
 
 --otimizações
 local tfm, ui, coroutine, string, table, math = tfm, ui, coroutine, string, table, math
@@ -88,7 +88,8 @@ local lingua = {
 		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Iniciar</b></font></p>',
 		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Configurações</b></font></p>',
 		'O novo organizador do sorteio:',
-		'<b>Ganhadores: <font color="#ED67EA">%s</font></b>'
+		'<b>Ganhadores: <font color="#ED67EA">%s</font></b>',
+		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Reiniciar</b></font></p>'
 	},
 	['en'] = {
 		'Org.',
@@ -116,7 +117,8 @@ local lingua = {
 		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Start</b></font></p>',
 		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Configurations</b></font></p>',
 		'The new scheduler of the script:',
-		'<b>Winners: <font color="#ED67EA">%s</font></b>'
+		'<b>Winners: <font color="#ED67EA">%s</font></b>',
+		'<p align="center"><font color="#FDFDFE" size="14" face="Trebuchet MS"><b>Restart</b></font></p>'
 	}
 }
 
@@ -176,6 +178,9 @@ do
 			for i=1, #iniciarSlice do
 				tfm.exec.removeImage(iniciarSlice[i])
 			end
+			for i=1, #premioImagem do
+				tfm.exec.removeImage(premioImagem[i])
+			end
 			removerTextArea(8, nil, 9, 10, 11, 12)
 			iniciarSlice = nineSlicedRect(fatias, '!1', alvo, 0, 92, 207, 56)
 			ui.addTextArea(-5, '<font size="16"><a href="event:iniciar">ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ</a></font>', alvo, 10, 112, nil, nil, 1, 1, 0, true)
@@ -186,6 +191,14 @@ do
 			end
 			premioImagem = nineSlicedRect(fatias, '!1', alvo, 0, 92+55, 207, 56)
 			ui.addTextArea(-7, '<font size="16"><a href="event:abrirConfig">ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ</a></font>', alvo, 10, 112+55, nil, nil, 1, 1, 0, true)
+		end,
+		[14] = function(alvo)
+			for i=1, #iniciarSlice do
+				tfm.exec.removeImage(iniciarSlice[i])
+			end
+			removerTextArea(8, nil, 9, 10, 11, 12, 5, -5)
+			iniciarSlice = nineSlicedRect(fatias, '!1', alvo, 0, 92, 207, 56)
+			ui.addTextArea(-14, '<font size="16"><a href="event:reiniciar">ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ</a></font>', alvo, 10, 112, nil, nil, 1, 1, 0, true)
 		end
 	}
 end
@@ -209,7 +222,8 @@ local textAreas = function(id, alvo, textoAuxiliar)
 		{10, lingua[comunidade][7], alvo, 310, 178+82, 180, nil, 0x0, 0x0, 1, true},
 		{11, lingua[comunidade][8], alvo, 290, 178-40, 220, nil, 0x0, 0x0, 1, true},
 		{12, lingua[comunidade][9], alvo, 310, 178+118, 180, nil, 0x0, 0x0, 1, true},
-		{13, '<font size="18"><a href="event:fecharConfig">ㅤㅤ</a></font>', alvo, 545, 110, nil, nil, 0x0, 0x0, 1, true}
+		{13, '<font size="18"><a href="event:fecharConfig">ㅤㅤ</a></font>', alvo, 545, 110, nil, nil, 0x0, 0x0, 1, true},
+		{14, textoAuxiliar, alvo, 15, 112, 180, nil, 0x0, 0x0, 1, true}
 	})[id]
 end
 
@@ -245,7 +259,7 @@ local selecionar = function(t)
 end
 
 local _modo = 'nenhum' --'nenhum', 'inicio', 'final'
-
+local tempoPercorrido = 0
 local callback, imageDaConfiguracao
 do
 	callback = {
@@ -316,6 +330,26 @@ do
 			for k in next, tfm.get.room.playerList do
 				eventNewPlayer(k)
 			end
+		end,
+		reiniciar = function()
+			for i=1, #premioImagem do
+				tfm.exec.removeImage(premioImagem[i])
+			end
+			for i=1, #iniciarSlice do
+				tfm.exec.removeImage(iniciarSlice[i])
+			end
+			for i=1, #slice do
+				tfm.exec.removeImage(slice[i])
+			end
+			if imageDaConfiguracao then tfm.exec.removeImage(imageDaConfiguracao) end
+			participantes = {}
+			ganhadores = {}
+			index = {}
+			tempoPercorrido = 0
+			removerTextArea(1, nil, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, -2, -5, -7, -14)
+			primeiraVez = true
+			_modo = 'nenhum'
+			tfm.exec.newGame(mapa)
 		end
 	}
 end
@@ -371,6 +405,7 @@ local sorteiozinho = coroutine.create(function()
 					tfm.exec.giveCheese(ganhadores[i])
 					print(ganhadores[i])
 				end
+				carregarTextArea(14, chefe, lingua[comunidade][27])
 			end
 			carregarTextArea(6)
 			do
@@ -418,7 +453,6 @@ local sorteiozinho = coroutine.create(function()
 end)
 
 do
-	local tempoPercorrido = 0
 	eventLoop = function()
 		coroutine.resume(sorteiozinho)
 		if tempoPercorrido == 5 then --depois de 5 segundos selecioando
